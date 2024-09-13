@@ -1,1 +1,5 @@
 build/*
+zig*/*
+.vscode/*
+.c_build/*
+c_out/*

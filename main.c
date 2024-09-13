@@ -1,5 +1,10 @@
-int main(int argc, char* argv[])
+#include "ccmd.h"
+
+int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
+    CCmd ccmd = ccmd_create(argc, argv);
+
+    ccmd_destroy(&ccmd);
+
+    return 0;
 }

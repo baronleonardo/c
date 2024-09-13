@@ -6,6 +6,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # for clangd
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # enable IPC
 
 include(options.cmake)
+include(deps.cmake)
+include(cmake/target.cmake)
 
 ##### flags
 if(WIN32)
@@ -23,7 +25,8 @@ if(WIN32)
     )
 else()
     set(cflags
-        -Wall -Wextra -Wpedantic -Werror
+        -Wall -Wextra -Wpedantic
+        # -Werror
         $<$<CONFIG:Debug>:-O1>
         $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>
         # $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
@@ -34,7 +37,7 @@ endif()
 add_compile_options(${cflags})
 add_link_options(${lflags})
 
-if(PP_ENABLE_TESTING)
+if(enable_testing)
     enable_testing()
 endif()
 
@@ -42,10 +45,14 @@ endif()
 ##### project
 project(c
     LANGUAGES C
-    VERSION 1.0
+    VERSION 0.1
     DESCRIPTION "this is a project/document/unittest management"
 )
 
 add_subdirectory(cbuild)
+add_subdirectory(ccmd)
+add_subdirectory(cprocess)
+add_subdirectory(utils)
 
 add_executable(${PROJECT_NAME} main.c)
+target_link_libraries(${PROJECT_NAME} PRIVATE ccmd)
