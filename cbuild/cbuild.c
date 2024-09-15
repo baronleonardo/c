@@ -1,4 +1,5 @@
 #include "cbuild.h"
+#include "cbuild_private.h"
 #include "cerror.h"
 #include "cprocess.h"
 
@@ -25,9 +26,10 @@ static char default_linker[] = "clang";
 #define BUILD_PATH ".c_build"
 #define INSTALL_PATH "c_out"
 #define NAME_MAX_LEN 50
+#define WHITESPACES " \t\n\v\f\r"
 
-static CError cbuild_target_build(CBuild *self, CBuildTarget *target);
-static CError cbuild_target_link(CBuild *self, CBuildTarget *target, char buf[], size_t buf_len, size_t buf_capacity);
+static CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity);
+static CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity);
 
 #define CBUILD_CREATE_T(T)                                      \
     /* cflags*/                                                 \
@@ -41,13 +43,29 @@ static CError cbuild_target_link(CBuild *self, CBuildTarget *target, char buf[],
         return CERROR_memory_allocation;                        \
     strcpy(out_cbuild->lflags, default_lflags_##T);
 
-CError cbuild_create(CBuildType btype, CBuild *out_cbuild)
+CError cbuild_create(CBuildType btype, char const base_path[], size_t base_path_len, CBuild *out_cbuild)
 {
+    assert(base_path && base_path_len > 0);
+
     if (out_cbuild)
     {
         *out_cbuild = (CBuild){.btype = btype};
         out_cbuild->compiler = default_compiler;
         out_cbuild->linker = default_linker;
+        // base path to absolute
+        char *status = stbds_arrsetcap(out_cbuild->base_path, c_fs_path_get_max_len());
+        if (!status)
+        {
+            return CERROR_memory_allocation;
+        }
+        size_t base_path_new_len = 0;
+        c_fs_error_t fs_err = c_fs_path_to_absolute(base_path,
+                                                    base_path_len,
+                                                    out_cbuild->base_path,
+                                                    stbds_arrcap(out_cbuild->base_path),
+                                                    &base_path_new_len);
+        assert(fs_err.code == 0);
+        stbds_arrsetlen(out_cbuild->base_path, base_path_new_len);
 
         switch (btype)
         {
@@ -85,17 +103,26 @@ CError cbuild_static_lib_create(CBuild *self, char const *name, size_t name_len,
     if (out_target)
     {
         *out_target = (CBuildTarget){0};
-
-        out_target->name = malloc(name_len);
-        if (!out_target->name)
+        out_target->impl = malloc(sizeof(CBuildTargetImpl));
+        if (!out_target->impl)
         {
             return CERROR_memory_allocation;
         }
-        strcpy(out_target->name, name);
 
-        out_target->cflags = self->cflags;
-        out_target->lflags = self->lflags;
-        out_target->ttype = CBUILD_TARGET_TYPE_static;
+        // target name
+        char *status = arraddnptr(out_target->impl->name, name_len + 1);
+        if (!status)
+        {
+            return CERROR_memory_allocation;
+        }
+        strncpy(out_target->impl->name, name, name_len);
+        out_target->impl->name[name_len] = '\0';
+
+        out_target->impl->cflags = self->cflags;
+        out_target->impl->lflags = self->lflags;
+        out_target->impl->ttype = CBUILD_TARGET_TYPE_static;
+
+        stbds_arrpush(self->targets, out_target->impl);
 
         return CERROR_none;
     }
@@ -108,7 +135,7 @@ CError cbuild_shared_lib_create(CBuild *self, char const *name, size_t name_len,
     CError err = cbuild_static_lib_create(self, name, name_len, out_target);
     if (out_target)
     {
-        out_target->ttype = CBUILD_TARGET_TYPE_shared;
+        out_target->impl->ttype = CBUILD_TARGET_TYPE_shared;
     }
 
     return err;
@@ -119,16 +146,60 @@ CError cbuild_exe_create(CBuild *self, char const *name, size_t name_len, CBuild
     CError err = cbuild_static_lib_create(self, name, name_len, out_target);
     if (out_target)
     {
-        out_target->ttype = CBUILD_TARGET_TYPE_executable;
+        out_target->impl->ttype = CBUILD_TARGET_TYPE_executable;
     }
 
     return err;
 }
 
-CError cbuild_target_push(CBuild *self, CBuildTarget *target)
+CError cbuild_target_add_source(CBuild *self, CBuildTarget *target, const char source_path[], size_t source_path_len)
 {
     assert(self && self->compiler && self->linker);
-    stbds_arrpush(self->targets, target);
+    assert(target && target->impl && target->impl->name);
+    assert(source_path && source_path_len > 0);
+
+    CTargetSource target_source = {0};
+    target_source.path = malloc(c_fs_path_get_max_len());
+    if (!target_source.path)
+    {
+        return CERROR_memory_allocation;
+    }
+    strncpy(target_source.path, source_path, source_path_len);
+    target_source.path[source_path_len] = '\0';
+    target_source.path_len = source_path_len;
+
+    bool is_abs;
+    bool exists;
+    c_fs_path_is_absolute(source_path, source_path_len, &is_abs);
+    if (is_abs)
+    {
+        c_fs_exists(source_path, source_path_len, &exists);
+        if (!exists)
+        {
+            return CERROR_no_such_source;
+        }
+    }
+    else
+    {
+        size_t base_path_len = stbds_arrlenu(self->base_path);
+        size_t new_path_len = 0;
+        c_fs_error_t fs_err = c_fs_path_append(self->base_path,
+                                               base_path_len,
+                                               stbds_arrcap(self->base_path),
+                                               source_path,
+                                               source_path_len,
+                                               &new_path_len);
+        assert(fs_err.code == 0);
+
+        c_fs_exists(self->base_path, new_path_len, &exists);
+        if (!exists)
+        {
+            return CERROR_no_such_source;
+        }
+        self->base_path[base_path_len] = '\0';
+    }
+
+    stbds_arrput(target->impl->sources, target_source);
 
     return CERROR_none;
 }
@@ -142,26 +213,65 @@ CError cbuild_build(CBuild *self)
 {
     assert(self);
 
+    CError err = CERROR_none;
+
+    // save current path, change to the base path
+    char *cur_dir_path = NULL;
+    char *status = stbds_arrsetcap(cur_dir_path, c_fs_path_get_max_len());
+    if (!status)
+    {
+        return CERROR_memory_allocation;
+    }
+    size_t cur_dir_path_len;
+    c_fs_error_t fs_err = c_fs_dir_get_current(cur_dir_path, stbds_arrcap(cur_dir_path), &cur_dir_path_len);
+    stbds_arrsetlen(cur_dir_path, cur_dir_path_len);
+    fs_err = c_fs_dir_change_current(self->base_path, stbds_arrlenu(self->base_path));
+    assert(fs_err.code == 0);
+
+    char *path_buf = NULL;
+    status = stbds_arrsetcap(path_buf, c_fs_path_get_max_len());
+    if (!status)
+    {
+        err = CERROR_memory_allocation;
+        goto Error;
+    }
+    size_t path_buf_len = sizeof(BUILD_PATH) - 1;
+
+    /// build path
+    stbds_arrsetlen(path_buf, path_buf_len);
+    strncpy(path_buf, BUILD_PATH, path_buf_len);
+    path_buf[path_buf_len] = '\0';
+
     bool exists = false;
-    c_fs_error_t err = c_fs_dir_exists(BUILD_PATH, sizeof(BUILD_PATH) - 1, &exists);
-    assert(err.code == 0);
+    c_fs_dir_exists(path_buf, path_buf_len, &exists);
     if (!exists)
     {
-        err = c_fs_dir_create(BUILD_PATH, sizeof(BUILD_PATH) - 1);
-        assert(err.code == 0);
+        fs_err = c_fs_dir_create(path_buf, path_buf_len);
+        assert(fs_err.code == 0);
     }
 
-    err = c_fs_dir_exists(INSTALL_PATH, sizeof(INSTALL_PATH) - 1, &exists);
-    assert(err.code == 0);
+    /// install path
+    path_buf_len = sizeof(INSTALL_PATH) - 1;
+    strncpy(path_buf, INSTALL_PATH, path_buf_len);
+    path_buf[path_buf_len] = '\0';
+
+    c_fs_dir_exists(path_buf, path_buf_len, &exists);
     if (!exists)
     {
-        err = c_fs_dir_create(INSTALL_PATH, sizeof(INSTALL_PATH) - 1);
-        assert(err.code == 0);
+        fs_err = c_fs_dir_create(path_buf, path_buf_len);
+        assert(fs_err.code == 0);
     }
 
-    cbuild_target_build(self, *self->targets);
+    err = cbuild_target_build(self, *self->targets, path_buf, 0, c_fs_path_get_max_len());
 
-    return CERROR_none;
+    // restore old path
+    fs_err = c_fs_dir_change_current(cur_dir_path, stbds_arrlenu(cur_dir_path));
+    assert(fs_err.code == 0);
+
+Error:
+    stbds_arrfree(path_buf);
+    stbds_arrfree(cur_dir_path);
+    return err;
 }
 
 void cbuild_destroy(CBuild *self)
@@ -169,126 +279,149 @@ void cbuild_destroy(CBuild *self)
     (void)self;
 }
 
-CError cbuild_target_build(CBuild *self, CBuildTarget *target)
+CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity)
 {
     if (!target)
         return CERROR_none;
 
     for (size_t iii = 0; iii < (size_t)stbds_arrlen(target->dependencies); iii++)
     {
-        cbuild_target_build(self, target->dependencies[iii]);
+        cbuild_target_build(self, target->dependencies[iii], path_buf, path_buf_len, path_buf_capacity);
     }
 
+    CError err = CERROR_none;
+    size_t base_path_buf_len = path_buf_len;
     char **cmd = NULL;
     stbds_arrput(cmd, self->compiler);
 
     char *subtoken;
-    while ((subtoken = strsep(&target->cflags, " \t")))
+    while ((subtoken = strsep(&target->cflags, WHITESPACES)))
     {
         stbds_arrput(cmd, subtoken);
     }
 
     stbds_arrput(cmd, "-c");
     /// FIXME:
-    for (size_t iii = 0; iii < 1; ++iii)
+    for (size_t iii = 0; iii < stbds_arrlenu(target->sources); ++iii)
     {
-        stbds_arrput(cmd, target->sources[iii]);
+        stbds_arrput(cmd, target->sources[iii].path);
     }
 
     stbds_arrput(cmd, "-o");
 
     // target output path
-    size_t obj_out_path_len = sizeof(BUILD_PATH) - 1;
-    char *obj_out_path = malloc(c_fs_path_get_max_len());
-    if (!obj_out_path)
-    {
-        return CERROR_memory_allocation;
-    }
-    strncpy(obj_out_path, BUILD_PATH, obj_out_path_len);
+    path_buf_len = sizeof(BUILD_PATH) - 1;
+    strncpy(path_buf, BUILD_PATH, path_buf_len);
+    path_buf[path_buf_len] = '\0';
 
     // BUILD_PATH/<target_name>
-    c_fs_error_t fs_err = c_fs_path_append(obj_out_path,
-                                           obj_out_path_len,
-                                           c_fs_path_get_max_len(),
-                                           target->name, strlen(target->name),
-                                           &obj_out_path_len);
+    c_fs_error_t fs_err = c_fs_path_append(path_buf,
+                                           path_buf_len,
+                                           path_buf_capacity,
+                                           target->name,
+                                           strlen(target->name),
+                                           &path_buf_len);
     assert(fs_err.code == 0);
 
     bool obj_out_path_exists = false;
-    fs_err = c_fs_dir_exists(obj_out_path, obj_out_path_len, &obj_out_path_exists);
-    assert(fs_err.code == 0);
+    c_fs_dir_exists(path_buf, path_buf_len, &obj_out_path_exists);
     if (!obj_out_path_exists)
     {
-        fs_err = c_fs_dir_create(obj_out_path, obj_out_path_len);
+        fs_err = c_fs_dir_create(path_buf, path_buf_len);
         assert(fs_err.code == 0);
     }
 
     // BUILD_PATH/<target_name>/<target_name>
-    fs_err = c_fs_path_append(obj_out_path,
-                              obj_out_path_len,
-                              c_fs_path_get_max_len(),
+    fs_err = c_fs_path_append(path_buf,
+                              path_buf_len,
+                              path_buf_capacity,
                               target->name,
                               strlen(target->name),
                               NULL);
     assert(fs_err.code == 0);
 
-    stbds_arrput(cmd, obj_out_path);
+    stbds_arrput(cmd, path_buf);
 
     cprocess_exec((char const *const *)cmd, stbds_arrlen(cmd));
 
     // restore back the object path
-    obj_out_path[obj_out_path_len] = '\0';
+    path_buf[base_path_buf_len] = '\0';
+    path_buf_len = base_path_buf_len;
     if (target->ttype == CBUILD_TARGET_TYPE_executable)
     {
-        cbuild_target_link(self, target, obj_out_path, obj_out_path_len, c_fs_path_get_max_len());
+        err = cbuild_target_link(self, target, path_buf, path_buf_len, path_buf_capacity);
     }
 
-    free(obj_out_path);
+    path_buf[base_path_buf_len] = '\0';
+    path_buf_len = base_path_buf_len;
+
     stbds_arrfree(cmd);
 
-    return CERROR_none;
+    return err;
 }
 
-CError cbuild_target_link(CBuild *self, CBuildTarget *target, char build_path[], size_t build_path_len, size_t buf_capacity)
+CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity)
 {
     char **cmd = NULL;
     stbds_arrput(cmd, strdup(self->linker));
 
     char *subtoken;
-    while ((subtoken = strsep(&target->lflags, " \t")))
+    while ((subtoken = strsep(&target->lflags, WHITESPACES)))
     {
         stbds_arrput(cmd, strdup(subtoken));
     }
 
+    // target output path
+    path_buf_len = sizeof(BUILD_PATH) - 1;
+    strncpy(path_buf, BUILD_PATH, path_buf_len);
+    path_buf[path_buf_len] = '\0';
+
+    // BUILD_PATH/<target_name>
+    c_fs_error_t fs_err = c_fs_path_append(path_buf,
+                                           path_buf_len,
+                                           path_buf_capacity,
+                                           target->name,
+                                           strlen(target->name),
+                                           &path_buf_len);
+    assert(fs_err.code == 0);
+
     c_fs_error_t link_handler(char path[], size_t path_len, void *extra_data);
-    c_fs_foreach(build_path, build_path_len, buf_capacity, &link_handler, (void *)cmd);
+    c_fs_foreach(path_buf, path_buf_len, path_buf_capacity, &link_handler, (void *)cmd);
 
     stbds_arrput(cmd, strdup("-o"));
 
-    size_t obj_out_path_len = sizeof(INSTALL_PATH) - 1;
-    char *obj_out_path = malloc(c_fs_path_get_max_len());
-    if (!obj_out_path)
-    {
-        return CERROR_memory_allocation;
-    }
-    strncpy(obj_out_path, INSTALL_PATH, obj_out_path_len);
+    // INSTALL_PATH/
+    path_buf_len = sizeof(INSTALL_PATH) - 1;
+    strncpy(path_buf, INSTALL_PATH, path_buf_len);
+    path_buf[path_buf_len] = '\0';
 
-    c_fs_error_t fs_err = c_fs_path_append(obj_out_path, obj_out_path_len, c_fs_path_get_max_len(), target->name, strlen(target->name), &obj_out_path_len);
+    // INSTALL_PATH/<target_name>
+    fs_err = c_fs_path_append(path_buf,
+                              path_buf_len,
+                              path_buf_capacity,
+                              target->name,
+                              strlen(target->name),
+                              &path_buf_len);
     assert(fs_err.code == 0);
 
     bool obj_out_path_exists = false;
-    fs_err = c_fs_dir_exists(obj_out_path, obj_out_path_len, &obj_out_path_exists);
-    assert(fs_err.code == 0);
+    c_fs_dir_exists(path_buf, path_buf_len, &obj_out_path_exists);
     if (!obj_out_path_exists)
     {
-        fs_err = c_fs_dir_create(obj_out_path, obj_out_path_len);
+        fs_err = c_fs_dir_create(path_buf, path_buf_len);
         assert(fs_err.code == 0);
     }
 
-    fs_err = c_fs_path_append(obj_out_path, obj_out_path_len, c_fs_path_get_max_len(), target->name, strlen(target->name), &obj_out_path_len);
+    // INSTALL_PATH/<target_name>/<target_name>
+    fs_err = c_fs_path_append(path_buf,
+                              path_buf_len,
+                              path_buf_capacity,
+                              target->name,
+                              strlen(target->name),
+                              &path_buf_len);
     assert(fs_err.code == 0);
 
-    stbds_arrput(cmd, strdup(obj_out_path));
+    stbds_arrput(cmd, strdup(path_buf));
 
     cprocess_exec((char const *const *)cmd, stbds_arrlen(cmd));
 
@@ -297,7 +430,6 @@ CError cbuild_target_link(CBuild *self, CBuildTarget *target, char build_path[],
     {
         free(cmd[iii]);
     }
-    free(obj_out_path);
 
     return CERROR_none;
 }

@@ -21,26 +21,28 @@ typedef enum CBuildTargetType
     CBUILD_TARGET_TYPE_static,
 } CBuildTargetType;
 
+typedef struct CTargetSource
+{
+    char *path;
+    size_t path_len;
+} CTargetSource;
+
+typedef struct CBuildTargetImpl CBuildTargetImpl;
+
 typedef struct CBuildTarget
 {
-    CBuildTargetType ttype;
-    char *name;
-    char **sources;
-    char *build_path;
-    char *install_path;
-    char *cflags;
-    char *lflags;
-    struct CBuildTarget **dependencies;
+    CBuildTargetImpl *impl;
 } CBuildTarget;
 
 typedef struct CBuild
 {
     CBuildType btype;
+    char *base_path;
     char *compiler;
     char *linker;
     char *cflags;
     char *lflags;
-    CBuildTarget **targets;
+    CBuildTargetImpl **targets;
 } CBuild;
 
 // target create
@@ -48,12 +50,8 @@ CError cbuild_static_lib_create(CBuild *self, char const *name, size_t name_len,
 CError cbuild_shared_lib_create(CBuild *self, char const *name, size_t name_len, CBuildTarget *out_target);
 CError cbuild_exe_create(CBuild *self, char const *name, size_t name_len, CBuildTarget *out_target);
 
-CError cbuild_target_push(CBuild *self, CBuildTarget *target);
+CError cbuild_target_add_source(CBuild *self, CBuildTarget *target, const char source_path[], size_t source_path_len);
 
 void cbuild_target_destroy(CBuild *self, CBuildTarget *target);
-
-// void cbuild_build(CBuild *self);
-
-// void cbuild_destroy(CBuild *self);
 
 #endif // CBUILD_H

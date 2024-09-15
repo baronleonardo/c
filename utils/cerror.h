@@ -14,6 +14,7 @@ typedef struct CError
 #define CERROR_memory_allocation ((CError){.code = 256, .msg = "Memory allocation/reallocation error"})
 #define CERROR_str_exccedded_len ((CError){.code = 257, .msg = "String excedded the length"})
 #define CERROR_out_is_null ((CError){.code = 258, .msg = "The out pointer is null"})
+#define CERROR_no_such_source ((CError){.code = 259, .msg = "Source doesn't exists"})
 
 // static inline bool c_on_error(bool has_err, int *err, int err_code)
 // {
