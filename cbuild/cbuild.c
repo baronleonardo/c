@@ -10,6 +10,15 @@
 #include <stb_ds.h>
 #include <fs.h>
 
+#if _WIN32 && (!_MSC_VER || !(_MSC_VER >= 1900))
+#error "You need MSVC must be higher that or equal to 1900"
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4996) // disable warning about unsafe functions
+#endif
+
 static char default_cflags_none[] = "";
 static char default_lflags_none[] = "";
 #ifdef _WIN32
@@ -313,10 +322,13 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
     char **cmd = NULL;
     stbds_arrput(cmd, self->compiler);
 
-    char *subtoken;
-    while ((subtoken = strsep(&target->cflags, WHITESPACES)))
+    char *subtoken = strtok(target->cflags, WHITESPACES);
+    if (subtoken)
     {
-        stbds_arrput(cmd, subtoken);
+        do
+        {
+            stbds_arrput(cmd, strdup(subtoken));
+        } while ((subtoken = strtok(NULL, WHITESPACES)));
     }
 
     stbds_arrput(cmd, compiler_compile_argument);
@@ -384,10 +396,13 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
     char **cmd = NULL;
     stbds_arrput(cmd, strdup(self->linker));
 
-    char *subtoken;
-    while ((subtoken = strsep(&target->lflags, WHITESPACES)))
+    char *subtoken = strtok(target->lflags, WHITESPACES);
+    if (subtoken)
     {
-        stbds_arrput(cmd, strdup(subtoken));
+        do
+        {
+            stbds_arrput(cmd, strdup(subtoken));
+        } while ((subtoken = strtok(NULL, WHITESPACES)));
     }
 
     // target output path
@@ -460,3 +475,7 @@ c_fs_error_t link_handler(char path[], size_t path_len, void *extra_data)
 
     return (c_fs_error_t){0};
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
