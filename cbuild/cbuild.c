@@ -313,10 +313,13 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
     char **cmd = NULL;
     stbds_arrput(cmd, self->compiler);
 
-    char *subtoken;
-    while ((subtoken = strsep(&target->cflags, WHITESPACES)))
+    char *subtoken = strtok(target->cflags, WHITESPACES);
+    if (subtoken)
     {
-        stbds_arrput(cmd, subtoken);
+        do
+        {
+            stbds_arrput(cmd, strdup(subtoken));
+        } while ((subtoken = strtok(NULL, WHITESPACES)));
     }
 
     stbds_arrput(cmd, compiler_compile_argument);
@@ -384,10 +387,13 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
     char **cmd = NULL;
     stbds_arrput(cmd, strdup(self->linker));
 
-    char *subtoken;
-    while ((subtoken = strsep(&target->lflags, WHITESPACES)))
+    char *subtoken = strtok(target->lflags, WHITESPACES);
+    if (subtoken)
     {
-        stbds_arrput(cmd, strdup(subtoken));
+        do
+        {
+            stbds_arrput(cmd, strdup(subtoken));
+        } while ((subtoken = strtok(NULL, WHITESPACES)));
     }
 
     // target output path
