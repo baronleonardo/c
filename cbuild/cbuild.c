@@ -12,6 +12,20 @@
 
 static char default_cflags_none[] = "";
 static char default_lflags_none[] = "";
+#ifdef _WIN32
+static char default_cflags_debug[] = "/Zi";
+static char default_lflags_debug[] = "";
+static char default_cflags_release[] = "/O2 /DNDEBUG";
+static char default_lflags_release[] = "";
+static char default_cflags_release_with_debug_info[] = "/O2 /Zi /DNDEBUG";
+static char default_lflags_release_with_debug_info[] = "";
+static char default_cflags_release_with_minimum_size[] = "/Os /DNDEBUG";
+static char default_lflags_release_with_minimum_size[] = "";
+static char default_compiler[] = "cl";
+static char default_linker[] = "cl";
+static char compiler_compile_argument[] = "/c";
+static char compiler_out_object_argument[] = "/out:";
+#else
 static char default_cflags_debug[] = "-g";
 static char default_lflags_debug[] = "";
 static char default_cflags_release[] = "-O3 -DNDEBUG";
@@ -22,13 +36,17 @@ static char default_cflags_release_with_minimum_size[] = "-Os -DNDEBUG";
 static char default_lflags_release_with_minimum_size[] = "";
 static char default_compiler[] = "clang";
 static char default_linker[] = "clang";
+static char compiler_compile_argument[] = "-c";
+static char compiler_out_object_argument[] = "-o";
+#endif
 
 #define BUILD_PATH ".c_build"
 #define INSTALL_PATH "c_out"
 #define NAME_MAX_LEN 50
 #define WHITESPACES " \t\n\v\f\r"
 
-static CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity);
+static CError
+cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity);
 static CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[], size_t path_buf_len, size_t path_buf_capacity);
 
 #define CBUILD_CREATE_T(T)                                      \
@@ -291,6 +309,7 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
 
     CError err = CERROR_none;
     size_t base_path_buf_len = path_buf_len;
+
     char **cmd = NULL;
     stbds_arrput(cmd, self->compiler);
 
@@ -300,14 +319,14 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
         stbds_arrput(cmd, subtoken);
     }
 
-    stbds_arrput(cmd, "-c");
+    stbds_arrput(cmd, compiler_compile_argument);
     /// FIXME:
     for (size_t iii = 0; iii < stbds_arrlenu(target->sources); ++iii)
     {
         stbds_arrput(cmd, target->sources[iii].path);
     }
 
-    stbds_arrput(cmd, "-o");
+    stbds_arrput(cmd, compiler_out_object_argument);
 
     // target output path
     path_buf_len = sizeof(BUILD_PATH) - 1;
