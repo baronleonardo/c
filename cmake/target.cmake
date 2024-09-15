@@ -35,7 +35,7 @@ function (c_create_targets target_name)
     )
 
     # add tests
-    if(${enable_testing} AND (NOT ${C_TARGET_NO_TESTS_FOR_NOW}))
+    if(enable_testing AND (NOT ${C_TARGET_NO_TESTS_FOR_NOW}))
         add_executable(test_${target_name} test_${target_name}.c)
         target_link_libraries(test_${target_name}
             PRIVATE
