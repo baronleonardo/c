@@ -24,3 +24,7 @@ c_create_targets(${PROJECT_NAME}
     TESTING_LIBS
     EXTRA_SOURCES
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Shlwapi)
+endif()

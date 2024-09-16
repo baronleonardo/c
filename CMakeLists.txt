@@ -12,7 +12,8 @@ include(cmake/target.cmake)
 ##### flags
 if(WIN32)
     set(cflags
-        /W4 /WX
+        /W4
+        # /WX
         /guard:cf # control flow guard
         /sdl # enable security features
         /analyze # enable static analysis
