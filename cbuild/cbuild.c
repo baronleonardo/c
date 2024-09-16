@@ -34,8 +34,8 @@ static char default_compiler[] = "cl";
 static char default_linker[] = "link";
 static char compiler_compile_argument[] = "/c";
 static char compiler_out_object_argument[] = "/Fo";
-static char object_extension[] = "obj";
-static char exe_extension[] = "exe";
+static char object_extension[] = ".obj";
+static char exe_extension[] = ".exe";
 static char linker_out_object_argument[] = "/out:";
 #else
 static char default_cflags_debug[] = "-g";
@@ -49,7 +49,7 @@ static char default_lflags_release_with_minimum_size[] = "";
 static char default_compiler[] = "clang";
 static char default_linker[] = "clang";
 static char compiler_compile_argument[] = "-c";
-static char object_extension[] = "o";
+static char object_extension[] = ".o";
 static char compiler_out_object_argument[] = "-o";
 #endif
 
@@ -189,45 +189,29 @@ CError cbuild_target_add_source(CBuild *self, CBuildTarget *target, const char s
     assert(target && target->impl && target->impl->name);
     assert(source_path && source_path_len > 0);
 
+    // create absolute path from source_path
     CTargetSource target_source = {0};
     target_source.path = malloc(c_fs_path_get_max_len());
     if (!target_source.path)
     {
         return CERROR_memory_allocation;
     }
-    strncpy(target_source.path, source_path, source_path_len);
-    target_source.path[source_path_len] = '\0';
-    target_source.path_len = source_path_len;
+    strncpy(target_source.path, self->base_path, stbds_arrlenu(self->base_path));
+    target_source.path_len = stbds_arrlenu(self->base_path);
 
-    bool is_abs;
+    c_fs_error_t fs_err = c_fs_path_append(target_source.path,
+                                           target_source.path_len,
+                                           c_fs_path_get_max_len(),
+                                           source_path,
+                                           source_path_len,
+                                           &target_source.path_len);
+    assert(fs_err.code == 0);
+
     bool exists;
-    c_fs_path_is_absolute(source_path, source_path_len, &is_abs);
-    if (is_abs)
+    c_fs_exists(target_source.path, target_source.path_len, &exists);
+    if (!exists)
     {
-        c_fs_exists(source_path, source_path_len, &exists);
-        if (!exists)
-        {
-            return CERROR_no_such_source;
-        }
-    }
-    else
-    {
-        size_t base_path_len = stbds_arrlenu(self->base_path);
-        size_t new_path_len = 0;
-        c_fs_error_t fs_err = c_fs_path_append(self->base_path,
-                                               base_path_len,
-                                               stbds_arrcap(self->base_path),
-                                               source_path,
-                                               source_path_len,
-                                               &new_path_len);
-        assert(fs_err.code == 0);
-
-        c_fs_exists(self->base_path, new_path_len, &exists);
-        if (!exists)
-        {
-            return CERROR_no_such_source;
-        }
-        self->base_path[base_path_len] = '\0';
+        return CERROR_no_such_source;
     }
 
     stbds_arrput(target->impl->sources, target_source);
@@ -364,6 +348,10 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
         assert(fs_err.code == 0);
     }
 
+    // change to compile dir
+    fs_err = c_fs_dir_change_current(path_buf, path_buf_len);
+    assert(fs_err.code == 0);
+
     // BUILD_PATH/<target_name>/<target_name>
     size_t cur_path_len;
     fs_err = c_fs_path_append(path_buf,
@@ -375,22 +363,6 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
     assert(fs_err.code == 0);
 
 #ifdef WIN32
-    char *tmp = malloc(c_fs_path_get_max_len());
-    if (!tmp)
-    {
-        return CERROR_memory_allocation;
-    }
-
-    // /Fo<output obj file>
-    snprintf(tmp, c_fs_path_get_max_len(), "%s%s.%s", compiler_out_object_argument, path_buf, object_extension);
-    stbds_arrput(cmd, strdup(tmp));
-
-    if (self->btype == CBUILD_TYPE_debug || self->btype == CBUILD_TYPE_release_with_debug_info)
-    {
-        // /Fd<output pdb file>
-        snprintf(tmp, c_fs_path_get_max_len(), "/Fd%s.pdb", path_buf);
-        stbds_arrput(cmd, strdup(tmp));
-    }
 #else
     (void)cur_path_len;
     stbds_arrput(cmd, path_buf);
@@ -405,13 +377,15 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
 
     cprocess_exec((char const *const *)cmd, stbds_arrlen(cmd));
 
-#ifdef WIN32
-    free(tmp);
-#endif
-
     // restore back the object path
     path_buf[base_path_buf_len] = '\0';
     path_buf_len = base_path_buf_len;
+
+
+    // restore dir
+    fs_err = c_fs_dir_change_current(self->base_path, stbds_arrlenu(self->base_path));
+    assert(fs_err.code == 0);
+
     if (target->ttype == CBUILD_TARGET_TYPE_executable)
     {
         err = cbuild_target_link(self, target, path_buf, path_buf_len, path_buf_capacity);
@@ -498,7 +472,7 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
         return CERROR_memory_allocation;
     }
 
-    snprintf(tmp, c_fs_path_get_max_len(), "%s%s.%s", linker_out_object_argument, path_buf, exe_extension);
+    snprintf(tmp, c_fs_path_get_max_len(), "%s%s%s", linker_out_object_argument, path_buf, exe_extension);
 
     stbds_arrput(cmd, tmp);
 #else
@@ -523,7 +497,13 @@ c_fs_error_t link_handler(char path[], size_t path_len, void *extra_data)
     (void)path_len;
 
     char **cmd = extra_data;
+#ifdef _WIN32
+    if(strstr(path, object_extension)) {
+#endif
     stbds_arrput(cmd, strdup(path));
+#ifdef _WIN32
+    }
+#endif
 
     return (c_fs_error_t){0};
 }
