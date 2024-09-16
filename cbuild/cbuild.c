@@ -375,8 +375,8 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
     assert(fs_err.code == 0);
 
 #ifdef WIN32
-    char* tmp = malloc(c_fs_path_get_max_len());
-    if(!tmp)
+    char *tmp = malloc(c_fs_path_get_max_len());
+    if (!tmp)
     {
         return CERROR_memory_allocation;
     }
@@ -385,7 +385,7 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target, char path_buf
     snprintf(tmp, c_fs_path_get_max_len(), "%s%s.%s", compiler_out_object_argument, path_buf, object_extension);
     stbds_arrput(cmd, strdup(tmp));
 
-    if(self->btype == CBUILD_TYPE_debug || self->btype == CBUILD_TYPE_release_with_debug_info)
+    if (self->btype == CBUILD_TYPE_debug || self->btype == CBUILD_TYPE_release_with_debug_info)
     {
         // /Fd<output pdb file>
         snprintf(tmp, c_fs_path_get_max_len(), "/Fd%s.pdb", path_buf);
@@ -457,7 +457,7 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
     c_fs_foreach(path_buf, path_buf_len, path_buf_capacity, &link_handler, (void *)cmd);
 
 #ifndef WIN32
-    stbds_arrput(cmd, compiler_out_object_argument);
+    stbds_arrput(cmd, strdup(compiler_out_object_argument));
 #endif
 
     // INSTALL_PATH/
@@ -492,8 +492,8 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
     assert(fs_err.code == 0);
 
 #ifdef WIN32
-    char* tmp = malloc(path_buf_len + sizeof(linker_out_object_argument));
-    if(!tmp)
+    char *tmp = malloc(path_buf_len + sizeof(linker_out_object_argument));
+    if (!tmp)
     {
         return CERROR_memory_allocation;
     }
@@ -502,7 +502,7 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target, char path_buf[
 
     stbds_arrput(cmd, tmp);
 #else
-    stbds_arrput(cmd, path_buf);
+    stbds_arrput(cmd, strdup(path_buf));
 #endif
 
     stbds_arrput(cmd, NULL);
