@@ -50,7 +50,7 @@ static char default_lflags_release_with_minimum_size[] = "";
 static char default_compiler[] = "clang";
 static char default_linker[] = "clang";
 static char compiler_compile_argument[] = "-c";
-// static char object_extension[] = ".o";
+static char object_extension[] = ".o";
 static char compiler_out_object_argument[] = "-o";
 #endif
 
@@ -456,14 +456,11 @@ c_fs_error_t link_handler(char path[], size_t path_len, void *extra_data)
     (void)path_len;
 
     char **cmd = extra_data;
-#ifdef _WIN32
+
     if (strstr(path, object_extension))
     {
-#endif
         stbds_arrput(cmd, strdup(path));
-#ifdef _WIN32
     }
-#endif
 
     return (c_fs_error_t){0};
 }
