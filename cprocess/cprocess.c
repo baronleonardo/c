@@ -16,20 +16,25 @@ int cprocess_exec(const char *const command_line[], size_t commands_count)
     }
     puts("");
 
-    int status = subprocess_create(command_line, subprocess_option_inherit_environment | subprocess_option_search_user_path | subprocess_option_enable_async | subprocess_option_combined_stdout_stderr, &out_process);
+    int status = subprocess_create(command_line, 
+                                   subprocess_option_inherit_environment
+                                   | subprocess_option_search_user_path
+                                   | subprocess_option_enable_async
+                                   | subprocess_option_combined_stdout_stderr,
+                                   &out_process);
 
     subprocess_join(&out_process, &status);
 
+#ifndef _WIN32
     if (status)
     {
-        FILE *f = subprocess_stdout(&out_process);
-        assert(f);
         char buf[BUFSIZ] = {0};
-        while (fgets(buf, BUFSIZ, f))
+        while (subprocess_read_stdout(&out_process, buf, BUFSIZ))
         {
             printf("%s", buf);
         }
     }
+#endif
 
     subprocess_destroy(&out_process);
 

@@ -34,8 +34,8 @@ static char default_lflags_release_with_minimum_size[] = "";
 static char default_compiler[] = "cl";
 static char default_linker[] = "link";
 static char compiler_compile_argument[] = "/c";
-static char compiler_out_object_argument[] = "/Fo";
-// static char object_extension[] = ".obj";
+// static char compiler_out_object_argument[] = "/Fo";
+static char object_extension[] = ".obj";
 static char exe_extension[] = ".exe";
 static char linker_out_object_argument[] = "/out:";
 #else
@@ -248,7 +248,7 @@ CError cbuild_build(CBuild *self)
 
     /// install path
     CStr install_path;
-    str_err = c_str_create(BUILD_PATH, sizeof(BUILD_PATH) - 1, &install_path);
+    str_err = c_str_create(INSTALL_PATH, sizeof(INSTALL_PATH) - 1, &install_path);
     assert(str_err.code == 0);
 
     c_fs_dir_exists(install_path.data, install_path.len, &exists);
@@ -425,13 +425,13 @@ CError cbuild_target_link(CBuild *self, CBuildTargetImpl *target)
     assert(fs_err.code == 0);
 
 #ifdef WIN32
-    char *tmp = malloc(path_buf_len + sizeof(linker_out_object_argument));
+    char *tmp = malloc(path_buf.len + sizeof(linker_out_object_argument));
     if (!tmp)
     {
         return CERROR_memory_allocation;
     }
 
-    snprintf(tmp, c_fs_path_get_max_len(), "%s%s%s", linker_out_object_argument, path_buf, exe_extension);
+    snprintf(tmp, c_fs_path_get_max_len(), "%s%s%s", linker_out_object_argument, path_buf.data, exe_extension);
 
     stbds_arrput(cmd, tmp);
 #else
