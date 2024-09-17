@@ -35,7 +35,7 @@ static char default_compiler[] = "cl";
 static char default_linker[] = "link";
 static char compiler_compile_argument[] = "/c";
 static char compiler_out_object_argument[] = "/Fo";
-static char object_extension[] = ".obj";
+// static char object_extension[] = ".obj";
 static char exe_extension[] = ".exe";
 static char linker_out_object_argument[] = "/out:";
 #else
@@ -50,7 +50,7 @@ static char default_lflags_release_with_minimum_size[] = "";
 static char default_compiler[] = "clang";
 static char default_linker[] = "clang";
 static char compiler_compile_argument[] = "-c";
-static char object_extension[] = ".o";
+// static char object_extension[] = ".o";
 static char compiler_out_object_argument[] = "-o";
 #endif
 
@@ -85,6 +85,8 @@ CError cbuild_create(CBuildType btype, char const base_path[], size_t base_path_
 
         // base path to absolute
         str_err = c_str_create(base_path, base_path_len, &out_cbuild->base_path);
+        assert(str_err.code == 0);
+        str_err = c_str_set_capacity(&out_cbuild->base_path, c_fs_path_get_max_len());
         assert(str_err.code == 0);
         c_fs_error_t fs_err = c_fs_path_to_absolute(base_path,
                                                     base_path_len,
@@ -189,9 +191,9 @@ CError cbuild_target_add_source(CBuild *self, CBuildTarget *target, const char s
     str_err = c_str_set_capacity(&target_str, c_fs_path_get_max_len());
     assert(str_err.code == 0);
 
-    c_fs_error_t fs_err = c_fs_path_append(self->base_path.data,
-                                           self->base_path.len,
-                                           self->base_path.capacity,
+    c_fs_error_t fs_err = c_fs_path_append(target_str.data,
+                                           target_str.len,
+                                           target_str.capacity,
                                            source_path,
                                            source_path_len,
                                            &target_str.len);
@@ -301,10 +303,6 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target)
 
     stbds_arrput(cmd, compiler_compile_argument);
 
-#ifndef WIN32
-    stbds_arrput(cmd, compiler_out_object_argument);
-#endif
-
     // target output path
     CStr path_buf;
     c_str_error_t str_err = c_str_create(STR(BUILD_PATH), &path_buf);
@@ -332,22 +330,6 @@ CError cbuild_target_build(CBuild *self, CBuildTargetImpl *target)
     // change to compile dir
     fs_err = c_fs_dir_change_current(path_buf.data, path_buf.len);
     assert(fs_err.code == 0);
-
-    // BUILD_PATH/<target_name>/<target_name>
-    size_t cur_path_len;
-    fs_err = c_fs_path_append(path_buf.data,
-                              path_buf.len,
-                              path_buf.capacity,
-                              target->name.data,
-                              target->name.len,
-                              &cur_path_len);
-    assert(fs_err.code == 0);
-
-#ifdef WIN32
-#else
-    (void)cur_path_len;
-    stbds_arrput(cmd, path_buf.data);
-#endif
 
     for (size_t iii = 0; iii < stbds_arrlenu(target->sources); ++iii)
     {
