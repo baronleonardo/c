@@ -42,6 +42,7 @@ typedef struct CBuild
     CStr base_path;
     CStr compiler;
     CStr linker;
+    CStr lib_creator;
     CStr cflags;
     CStr lflags;
     CBuildTargetImpl **targets;
