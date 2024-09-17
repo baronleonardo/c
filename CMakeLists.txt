@@ -30,7 +30,7 @@ else()
         # -Werror
         $<$<CONFIG:Debug>:-O1>
         $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>
-        # $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+        $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
         $<$<CONFIG:Release>:-D_FORTIFY_SOURCE=2> # detect runtime buffer overflows
     )
     set(lflags $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)

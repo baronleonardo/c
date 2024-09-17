@@ -19,8 +19,8 @@ project(cbuild)
 # endif()
 
 c_create_targets(${PROJECT_NAME}
-    PRIVATE_LIBS utils cprocess c::stb_ds
-    PUBLIC_LIBS c::fs utils
+    PRIVATE_LIBS utils cprocess c::stb_ds c::fs
+    PUBLIC_LIBS utils c::str
     TESTING_LIBS
     EXTRA_SOURCES
 )

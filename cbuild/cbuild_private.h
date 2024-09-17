@@ -7,12 +7,12 @@
 struct CBuildTargetImpl
 {
     CBuildTargetType ttype;
-    char *name;
-    char *build_path;
-    char *install_path;
-    char *cflags;
-    char *lflags;
-    CTargetSource *sources;
+    CStr name;
+    CStr build_path;
+    CStr install_path;
+    CStr cflags;
+    CStr lflags;
+    CStr *sources;
     struct CBuildTargetImpl **dependencies;
 };
 

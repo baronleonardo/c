@@ -5,6 +5,8 @@
 
 #include "cerror.h"
 
+#include <str.h>
+
 typedef enum CBuildType
 {
     CBUILD_TYPE_none,
@@ -37,11 +39,11 @@ typedef struct CBuildTarget
 typedef struct CBuild
 {
     CBuildType btype;
-    char *base_path;
-    char *compiler;
-    char *linker;
-    char *cflags;
-    char *lflags;
+    CStr base_path;
+    CStr compiler;
+    CStr linker;
+    CStr cflags;
+    CStr lflags;
     CBuildTargetImpl **targets;
 } CBuild;
 

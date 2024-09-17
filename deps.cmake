@@ -30,6 +30,20 @@ target_include_directories(fs PUBLIC ${fs_path})
 add_library(c::fs ALIAS fs)
 
 
+# str
+set(str_path ${CMAKE_BINARY_DIR}/_deps/str)
+if(NOT EXISTS ${str_path}/str.h)
+    file(DOWNLOAD https://raw.githubusercontent.com/baronleonardo/cstdlib/main/str.h ${str_path}/str.h)
+    file(WRITE ${str_path}/str.c 
+        "#define CSTDLIB_STR_IMPLEMENTATION\n"
+        "#include \"str.h\"\n"
+    )
+endif()
+add_library(str ${str_path}/str.h ${str_path}/str.c)
+target_include_directories(str PUBLIC ${str_path})
+add_library(c::str ALIAS str)
+
+
 # utest
 set(utest_path ${CMAKE_BINARY_DIR}/_deps/utest)
 if(NOT EXISTS ${utest_path}/utest.h)
