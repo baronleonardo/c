@@ -43,6 +43,19 @@ add_library(str ${str_path}/str.h ${str_path}/str.c)
 target_include_directories(str PUBLIC ${str_path})
 add_library(c::str ALIAS str)
 
+# array
+set(array_path ${CMAKE_BINARY_DIR}/_deps/array)
+if(NOT EXISTS ${array_path}/array.h)
+    file(DOWNLOAD https://raw.githubusercontent.com/baronleonardo/cstdlib/main/array.h ${array_path}/array.h)
+    file(WRITE ${array_path}/array.c 
+        "#define CSTDLIB_ARRAY_IMPLEMENTATION\n"
+        "#include \"array.h\"\n"
+    )
+endif()
+add_library(array ${array_path}/array.h ${array_path}/array.c)
+target_include_directories(array PUBLIC ${array_path})
+add_library(c::array ALIAS array)
+
 
 # utest
 set(utest_path ${CMAKE_BINARY_DIR}/_deps/utest)

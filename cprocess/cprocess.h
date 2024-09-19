@@ -3,6 +3,6 @@
 
 #include <stddef.h>
 
-int cprocess_exec(const char *const command_line[], size_t commands_count);
+int cprocess_exec (char const* const command_line[], size_t commands_count);
 
 #endif // CPROCESS_H
