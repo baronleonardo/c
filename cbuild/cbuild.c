@@ -400,7 +400,7 @@ cbuild_build (CBuild* self)
 void
 cbuild_destroy (CBuild* self)
 {
-  assert (self && self->targets);
+  assert (self && self->targets.data);
 
   c_str_destroy (&self->base_path);
   c_str_destroy (&self->cflags);
@@ -630,7 +630,7 @@ internal_cbuild_target_build_library (CBuild* self, CBuildTargetImpl* target)
   assert (fs_err.code == 0);
 
 #ifdef WIN32
-  char* tmp = malloc (path_buf.len + sizeof (default_out_argument const));
+  char* tmp = malloc (target->install_path.len + sizeof (default_out_argument));
   if (!tmp)
     {
       return CERROR_memory_allocation;
@@ -639,10 +639,9 @@ internal_cbuild_target_build_library (CBuild* self, CBuildTargetImpl* target)
   snprintf (
       tmp,
       c_fs_path_get_max_len (),
-      "%s%s%s",
+      "%s%s",
       default_out_argument,
-      target->install_path.data,
-      default_exe_extension
+      target->install_path.data
   );
 
   arr_err = c_array_push (&cmd, &tmp);
@@ -748,7 +747,7 @@ internal_cbuild_target_link (CBuild* self, CBuildTargetImpl* target)
   assert (fs_err.code == 0);
 
 #ifdef WIN32
-  char* tmp = malloc (path_buf.len + sizeof (default_out_argument const));
+  char* tmp = malloc (target->install_path.len + sizeof (default_out_argument));
   if (!tmp)
     {
       return CERROR_memory_allocation;
@@ -757,10 +756,9 @@ internal_cbuild_target_link (CBuild* self, CBuildTargetImpl* target)
   snprintf (
       tmp,
       c_fs_path_get_max_len (),
-      "%s%s%s",
+      "%s%s",
       default_out_argument,
-      target->install_path.data,
-      default_exe_extension
+      target->install_path.data
   );
 
   arr_err = c_array_push (&cmd, &tmp);
