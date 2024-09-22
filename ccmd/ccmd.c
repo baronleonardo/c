@@ -106,7 +106,6 @@ internal_ccmd_on_build (CCmd* self)
       cur_exe_dir.data, cur_exe_dir.len, &cur_exe_dir.len
   );
   ON_ERR (fs_err);
-  puts (cur_exe_dir.data);
 
   /// check build.c existance
   bool is_build_c_exists;
@@ -199,7 +198,6 @@ internal_ccmd_on_build (CCmd* self)
   // free
   c_dl_loader_destroy (&dll_loader);
   c_str_destroy (&cbuild_dll_path);
-  c_str_destroy (&cflags);
   c_str_destroy (&cur_exe_dir);
   cbuild_target_destroy (&cbuild, &build_target);
   cbuild_destroy (&cbuild);

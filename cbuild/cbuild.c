@@ -23,7 +23,7 @@ static char const default_install_path[] = "c_out";
 static char default_cflags_none[] = "";
 static char default_lflags_none[] = "";
 #ifdef _WIN32
-static char default_cflags_debug[] = "/Zi";
+static char default_cflags_debug[] = "/Zi /utf-8";
 static char default_lflags_debug[] = "";
 static char default_cflags_release[] = "/O2 /DNDEBUG";
 static char default_lflags_release[] = "";
