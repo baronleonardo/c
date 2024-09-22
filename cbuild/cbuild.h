@@ -8,12 +8,6 @@
 #include <array.h>
 #include <str.h>
 
-// #ifdef _WIN32
-// #define CEXPORT __declspec (dllexport)
-// #else
-// #define CEXPORT __attribute__ ((visibility ("default"))) __attribute__
-// ((used)) #endif
-
 typedef enum CBuildType
 {
   CBUILD_TYPE_none,

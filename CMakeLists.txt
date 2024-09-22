@@ -4,7 +4,6 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # for clangd
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # enable IPC
-# set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 include(options.cmake)
 include(deps.cmake)
@@ -60,6 +59,10 @@ add_subdirectory(utils)
 add_subdirectory(cbuild)
 
 add_executable(${PROJECT_NAME} main.c)
-target_link_libraries(${PROJECT_NAME} PRIVATE ccmd dl)
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE 
+        ccmd
+        $<$<PLATFORM_ID:Linux>:dl>
+)
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
 set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)

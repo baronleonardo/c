@@ -11,7 +11,17 @@
 
 #define STR(s) (s), sizeof (s) - 1
 #define ON_ERR(err)                                                            \
-  ((err.code != 0) ? (fprintf (stderr, "%s\n", err.msg), abort ()) : (void) 0)
+  ((err.code != 0)                                                             \
+       ? (fprintf (stderr, "%d: %s\n", err.code, err.msg), abort ())           \
+       : (void) 0)
+
+#ifdef _WIN32
+static char const default_pic_flag[] = "";
+static char const default_include_dir_flag[] = "/I";
+#else
+static char const default_pic_flag[] = "-fPIC";
+static char const default_include_dir_flag[] = "-I";
+#endif
 
 static CError internal_ccmd_on_init (CCmd* self);
 static CError internal_ccmd_on_build (CCmd* self);
@@ -114,15 +124,18 @@ internal_ccmd_on_build (CCmd* self)
   err = cbuild_target_add_source (&cbuild, &build_target, STR ("build.c"));
   ON_ERR (err);
 
-  // compile flags
+  /// compile flags
   CStr cflags;
   char path_separator;
   c_fs_path_get_separator (&path_separator);
   c_str_create_empty (c_fs_path_get_max_len (), &cflags);
+  // "-fpic -I<exe dir>/include"
   cflags.len = snprintf (
       cflags.data,
       cflags.capacity,
-      "-fPIC -I%s%c%s",
+      "%s %s%s%c%s",
+      default_pic_flag,
+      default_include_dir_flag,
       cur_exe_dir.data,
       path_separator,
       "include"
@@ -130,12 +143,20 @@ internal_ccmd_on_build (CCmd* self)
   err = cbuild_target_add_compile_flag (
       &cbuild, &build_target, cflags.data, cflags.len
   );
+  ON_ERR (err);
   c_str_destroy (&cflags);
+
+#ifdef _WIN32
+  err = cbuild_target_add_link_flag (
+      &cbuild, &build_target, STR (" /FORCE:UNRESOLVED /EXPORT:build ")
+  );
+  ON_ERR (err);
+#endif
 
   err = cbuild_build (&cbuild);
   ON_ERR (err);
 
-#ifdef WIN32_t
+#ifdef _WIN32
   char const cbuild_dll_name[] = "_.dll";
 #else
   char const cbuild_dll_name[] = "lib_.so";
