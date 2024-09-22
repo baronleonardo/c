@@ -57,6 +57,20 @@ target_include_directories(array PUBLIC ${array_path})
 add_library(c::array ALIAS array)
 
 
+# dl_loader
+set(dl_loader_path ${CMAKE_BINARY_DIR}/_deps/dl_loader)
+if(NOT EXISTS ${dl_loader_path}/dl_loader.h)
+    file(DOWNLOAD https://raw.githubusercontent.com/baronleonardo/cstdlib/main/dl_loader.h ${dl_loader_path}/dl_loader.h)
+    file(WRITE ${dl_loader_path}/dl_loader.c 
+        "#define CSTDLIB_DL_LOADER_IMPLEMENTATION\n"
+        "#include \"dl_loader.h\"\n"
+    )
+endif()
+add_library(dl_loader ${dl_loader_path}/dl_loader.h ${dl_loader_path}/dl_loader.c)
+target_include_directories(dl_loader PUBLIC ${dl_loader_path})
+add_library(c::dl_loader ALIAS dl_loader)
+
+
 # utest
 set(utest_path ${CMAKE_BINARY_DIR}/_deps/utest)
 if(NOT EXISTS ${utest_path}/utest.h)

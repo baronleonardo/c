@@ -25,14 +25,17 @@ function (c_create_targets target_name)
         ${C_TARGET_EXTRA_SOURCES}
     )
 
-    # include dirs, libs linking
-    target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    set_target_properties(${target_name} PROPERTIES PUBLIC_HEADER ${target_name}.h)
+
     target_link_libraries(${target_name}
         PRIVATE
             ${C_TARGET_PRIVATE_LIBS}
         PUBLIC
             ${C_TARGET_PUBLIC_LIBS}
     )
+
+    # include dirs, libs linking
+    target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
     # add tests
     if(enable_testing AND (NOT ${C_TARGET_NO_TESTS_FOR_NOW}))

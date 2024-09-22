@@ -8,6 +8,12 @@
 #include <array.h>
 #include <str.h>
 
+// #ifdef _WIN32
+// #define CEXPORT __declspec (dllexport)
+// #else
+// #define CEXPORT __attribute__ ((visibility ("default"))) __attribute__
+// ((used)) #endif
+
 typedef enum CBuildType
 {
   CBUILD_TYPE_none,
@@ -68,6 +74,14 @@ CError cbuild_target_add_source (
     CBuildTarget* target,
     char const source_path[],
     size_t source_path_len
+);
+
+CError cbuild_target_add_compile_flag (
+    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
+);
+
+CError cbuild_target_add_link_flag (
+    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
 );
 
 void cbuild_target_destroy (CBuild* self, CBuildTarget* target);

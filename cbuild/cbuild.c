@@ -303,10 +303,57 @@ cbuild_target_add_source (
   return CERROR_none;
 }
 
+CError
+cbuild_target_add_compile_flag (
+    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
+)
+{
+  assert (self && self->targets.data);
+  assert (target && target->impl);
+
+  c_str_error_t str_err =
+      c_str_concatenate_with_cstr (&target->impl->cflags, " ", 1, true);
+  assert (str_err.code == 0);
+  str_err =
+      c_str_concatenate_with_cstr (&target->impl->cflags, flag, flag_len, true);
+  assert (str_err.code == 0);
+
+  return CERROR_none;
+}
+
+CError
+cbuild_target_add_link_flag (
+    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
+)
+{
+  assert (self && self->targets.data);
+  assert (target && target->impl);
+
+  c_str_error_t str_err =
+      c_str_concatenate_with_cstr (&target->impl->lflags, " ", 1, true);
+  assert (str_err.code == 0);
+  str_err =
+      c_str_concatenate_with_cstr (&target->impl->lflags, flag, flag_len, true);
+  assert (str_err.code == 0);
+
+  return CERROR_none;
+}
+
 void
 cbuild_target_destroy (CBuild* self, CBuildTarget* target)
 {
   assert (self && self->targets.data);
+
+  // remove it from target list from `self`
+  for (size_t i = 0; i < self->targets.len; ++i)
+    {
+      if (target->impl == ((CBuildTargetImpl**) self->targets.data)[i])
+        {
+          c_array_error_t arr_err = c_array_remove (&self->targets, i);
+          assert (arr_err.code == 0);
+          break;
+        }
+    }
 
   c_str_destroy (&target->impl->name);
   c_str_destroy (&target->impl->build_path);

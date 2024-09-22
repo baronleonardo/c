@@ -19,6 +19,9 @@ typedef struct CError
   ((CError){ .code = 258, .msg = "The out pointer is null" })
 #define CERROR_no_such_source                                                  \
   ((CError){ .code = 259, .msg = "Source doesn't exists" })
+// #define CERROR_fs(m) ((CError){ .code = 260, .msg = m })
+// #define CERROR_arr(m) ((CError){ .code = 261, .msg = m })
+// #define CERROR_str(m) ((CError){ .code = 262, .msg = m })
 
 // static inline bool c_on_error(bool has_err, int *err, int err_code)
 // {

@@ -27,11 +27,15 @@ cprocess_exec (char const* const command_line[], size_t commands_count)
   int status = subprocess_create (
       command_line,
       subprocess_option_inherit_environment |
-          subprocess_option_search_user_path | subprocess_option_no_window,
+          subprocess_option_search_user_path | subprocess_option_no_window |
+          subprocess_option_enable_async,
       &out_process
   );
 
+  subprocess_join (&out_process, &status);
+
   // on error
+  printf ("Status: %d\n", status);
   if (status)
     {
 #ifdef _WIN32

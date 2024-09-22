@@ -1,6 +1,8 @@
 #ifndef CCMD_H
 #define CCMD_H
 
+#include "cerror.h"
+
 typedef enum CSubCmd
 {
   CSUB_CMD_init,
@@ -18,7 +20,7 @@ typedef struct CCmd
   CSubCmd* subcmd;
 } CCmd;
 
-CCmd ccmd_create (int argc, char* argv[]);
+CError ccmd_create (int argc, char* argv[], CCmd* out_ccmd);
 
 void ccmd_destroy (CCmd* self);
 
