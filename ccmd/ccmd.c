@@ -2,6 +2,7 @@
 #include "cbuild.h"
 #include "cbuild_private.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,7 @@
   ((err.code != 0)                                                             \
        ? (fprintf (stderr, "%d: %s\n", err.code, err.msg), abort ())           \
        : (void) 0)
+#define MAX_BUILD_FUNCTION_NAME_LEN 1000
 
 #ifdef _WIN32
 static char const default_pic_flag[] = "";
@@ -33,6 +35,11 @@ static CError internal_ccmd_on_help (CCmd* self);
 static CError internal_ccmd_on_version (CCmd* self);
 static void internal_ccmd_on_fatal_error (
     char const* category, char const* msg
+);
+static CError internal_find_build_function_name (
+    char build_file_path[],
+    size_t build_file_path_len,
+    CStr* out_function_name_buf
 );
 
 CError
@@ -90,7 +97,7 @@ CError
 internal_ccmd_on_build (CCmd* self)
 {
   CBuild cbuild;
-  CError err = cbuild_create (CBUILD_TYPE_debug, ".", 1, &cbuild);
+  CError err = cbuild_create (CBUILD_TYPE_debug, STR ("."), &cbuild);
   ON_ERR (err);
 
   /// get current executable path
@@ -114,6 +121,15 @@ internal_ccmd_on_build (CCmd* self)
     {
       internal_ccmd_on_fatal_error ("build.c", "No such file or directory");
     }
+
+  CStr build_function_name;
+  str_err =
+      c_str_create_empty (MAX_BUILD_FUNCTION_NAME_LEN, &build_function_name);
+  ON_ERR (str_err);
+  err = internal_find_build_function_name (
+      STR ("./build.c"), &build_function_name
+  );
+  ON_ERR (err);
 
   /// create a shared library for build.c
   CBuildTarget build_target;
@@ -186,7 +202,13 @@ internal_ccmd_on_build (CCmd* self)
   ON_ERR (dl_err);
 
   CError (*build_fn) (CBuild*);
-  dl_err = c_dl_loader_get (&dll_loader, STR ("build"), (void*) &build_fn);
+  /// FIXME: the function will not called build
+  dl_err = c_dl_loader_get (
+      &dll_loader,
+      build_function_name.data,
+      build_function_name.len,
+      (void*) &build_fn
+  );
   ON_ERR (dl_err);
 
   err = build_fn (&cbuild);
@@ -197,6 +219,7 @@ internal_ccmd_on_build (CCmd* self)
 
   // free
   c_dl_loader_destroy (&dll_loader);
+  c_str_destroy (&build_function_name);
   c_str_destroy (&cbuild_dll_path);
   c_str_destroy (&cur_exe_dir);
   cbuild_target_destroy (&cbuild, &build_target);
@@ -253,4 +276,124 @@ internal_ccmd_on_fatal_error (char const category[], char const msg[])
 {
   fprintf (stderr, "Error(%s): %s\n", category, msg);
   exit (EXIT_FAILURE);
+}
+
+char*
+internal_skip_whitespaces (char* needle)
+{
+  while (*needle && isspace (*needle))
+    {
+      needle++;
+    }
+
+  return needle;
+}
+
+CError
+internal_find_build_function_name (
+    char build_file_path[],
+    size_t build_file_path_len,
+    CStr* out_function_name_buf
+)
+{
+  char* orig_buf_data = NULL;
+  CStr buf;
+  c_str_error_t str_err = c_str_create_empty (BUFSIZ, &buf);
+  ON_ERR (str_err);
+
+  CFile build_file;
+  c_fs_error_t fs_err =
+      c_fs_file_open (build_file_path, build_file_path_len, "r", &build_file);
+  ON_ERR (fs_err);
+  fs_err = c_fs_file_read (&build_file, buf.data, buf.capacity, &buf.len);
+  ON_ERR (str_err);
+  orig_buf_data = buf.data;
+
+  // CError\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(CBuild\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)
+
+  bool found = false;
+  while ((str_err = c_str_find (&buf, STR ("CError"), &buf.data)).code == 0 &&
+         buf.data)
+    {
+      buf.data += sizeof ("CError") - 1;
+      buf.data = internal_skip_whitespaces (buf.data);
+
+      if (!(((*buf.data <= 'z') && (*buf.data >= 'a')) ||
+            ((*buf.data <= 'Z') && (*buf.data >= 'A')) || *buf.data != '_'))
+        {
+          continue;
+        }
+      str_err = c_str_concatenate_with_cstr (
+          out_function_name_buf, buf.data, 1, true
+      );
+      ON_ERR (str_err);
+      buf.data++;
+
+      while (((*buf.data <= 'z') && (*buf.data >= 'a')) ||
+             ((*buf.data <= '9') && (*buf.data >= '0')) ||
+             ((*buf.data <= 'Z') && (*buf.data >= 'A')) || *buf.data == '_')
+        {
+          str_err = c_str_concatenate_with_cstr (
+              out_function_name_buf, buf.data, 1, true
+          );
+          ON_ERR (str_err);
+          buf.data++;
+        }
+      out_function_name_buf->data[out_function_name_buf->len] = '\0';
+
+      buf.data = internal_skip_whitespaces (buf.data);
+
+      if (*buf.data != '(')
+        {
+          continue;
+        }
+      buf.data++;
+
+      if (strncmp (buf.data, STR ("CBuild")) != 0)
+        {
+          continue;
+        }
+      buf.data += sizeof ("CBuild") - 1;
+
+      buf.data = internal_skip_whitespaces (buf.data);
+      if (*buf.data != '*')
+        {
+          continue;
+        }
+      buf.data++;
+      buf.data = internal_skip_whitespaces (buf.data);
+
+      if (!(((*buf.data <= 'z') && (*buf.data >= 'a')) ||
+            ((*buf.data <= 'Z') && (*buf.data >= 'A')) || *buf.data != '_'))
+        {
+          continue;
+        }
+      buf.data++;
+
+      while (((*buf.data <= 'z') && (*buf.data >= 'a')) ||
+             ((*buf.data <= '9') && (*buf.data >= '0')) ||
+             ((*buf.data <= 'Z') && (*buf.data >= 'A')) || *buf.data == '_')
+        {
+          buf.data++;
+        }
+
+      buf.data = internal_skip_whitespaces (buf.data);
+
+      if (*buf.data != ')')
+        {
+          continue;
+        }
+      buf.data++;
+
+      found = true;
+      break;
+    }
+  ON_ERR (str_err);
+
+  // Error:
+  buf.data = orig_buf_data;
+  c_fs_file_close (&build_file);
+  c_str_destroy (&buf);
+
+  return found ? CERROR_none : CERROR_build_function_not_found;
 }
