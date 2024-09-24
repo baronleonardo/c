@@ -19,6 +19,7 @@ typedef enum CBuildType
 
 typedef enum CBuildTargetType
 {
+  CBUILD_TARGET_TYPE_object,
   CBUILD_TARGET_TYPE_executable,
   CBUILD_TARGET_TYPE_shared,
   CBUILD_TARGET_TYPE_static,
@@ -53,6 +54,9 @@ typedef struct CBuild
 } CBuild;
 
 // target create
+CError cbuild_object_create (
+    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+);
 CError cbuild_static_lib_create (
     CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
 );

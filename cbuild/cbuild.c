@@ -44,6 +44,7 @@ static char const default_static_library_extension[] = ".lib";
 
 static char const default_compiler_argument[] = "/c";
 static char const default_out_argument[] = "/out:";
+static char const default_object_argument[] = "";
 static char const default_shared_library_argument[] = "/DLL";
 static char const default_static_library_argument[] = "";
 #else
@@ -68,6 +69,7 @@ static char const default_static_library_extension[] = ".a";
 
 static char const default_compiler_argument[] = "-c";
 static char const default_out_argument[] = "-o";
+static char const default_object_argument[] = "";
 static char const default_shared_library_argument[] = "-shared";
 static char const default_static_library_argument[] = "rcs";
 #endif
@@ -205,6 +207,21 @@ cbuild_create (
     }
 
   return CERROR_out_is_null;
+}
+
+CError
+cbuild_object_create (
+    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+)
+{
+  return internal_cbuild_target_create (
+      self,
+      name,
+      name_len,
+      out_target,
+      STR (default_object_argument),
+      CBUILD_TARGET_TYPE_object
+  );
 }
 
 CError
@@ -517,7 +534,7 @@ internal_cbuild_target_build (CBuild* self, CBuildTargetImpl* target)
     {
       err = internal_cbuild_target_link (self, target);
     }
-  else
+  else if (target->ttype != CBUILD_TARGET_TYPE_object)
     {
       internal_cbuild_target_build_library (self, target);
     }
