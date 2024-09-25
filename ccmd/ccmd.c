@@ -91,6 +91,97 @@ ccmd_destroy (CCmd* self)
 CError
 internal_ccmd_on_init (CCmd* self)
 {
+  /// TODO: we will have an option for custom path
+  CStr project_path;
+  c_str_error_t str_err =
+      c_str_create_empty (c_fs_path_get_max_len (), &project_path);
+  ON_ERR (str_err);
+  c_fs_error_t fs_err = c_fs_dir_get_current (
+      project_path.data, project_path.capacity, &project_path.len
+  );
+  ON_ERR (fs_err);
+
+  size_t const orig_len = project_path.len;
+  fs_err = c_fs_path_append (
+      project_path.data,
+      project_path.len,
+      project_path.capacity,
+      STR ("build.c"),
+      &project_path.len
+  );
+  ON_ERR (fs_err);
+
+  CFile file;
+  fs_err = c_fs_file_open (project_path.data, project_path.len, "w", &file);
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_file_write (
+      &file,
+      STR ("#include \"cbuild.h\"\n\n"
+           "CError build(CBuild* self) {\n"
+           "  CBuildTarget target;\n"
+           "  CError err = cbuild_exe_create (self, \"target\", "
+           "sizeof(\"target\") - 1, &target);\n"
+           "  if (err.code != 0)\n"
+           "    {\n"
+           "      return err;\n"
+           "    }\n\n"
+           "  err = cbuild_target_add_source (self, &target, "
+           "\"module1/main.c\", "
+           "  sizeof(\"module1/main.c\") - 1);\n"
+           "  if (err.code != 0)\n"
+           "    {\n"
+           "      return err;\n"
+           "    }\n\n"
+           "  return CERROR_none;\n"
+           "}\n"),
+      NULL
+  );
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_file_close (&file);
+  ON_ERR (fs_err);
+
+  project_path.len = orig_len;
+  project_path.data[project_path.len] = '\0';
+  fs_err = c_fs_path_append (
+      project_path.data,
+      project_path.len,
+      project_path.capacity,
+      STR ("example"),
+      &project_path.len
+  );
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_dir_create (project_path.data, project_path.len);
+  ON_ERR (fs_err);
+
+  // size_t example_dir_path_len = project_path.len;
+  project_path.data[project_path.len] = '\0';
+  fs_err = c_fs_path_append (
+      project_path.data,
+      project_path.len,
+      project_path.capacity,
+      STR ("example.c"),
+      &project_path.len
+  );
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_file_open (project_path.data, project_path.len, "w", &file);
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_file_write (
+      &file,
+      STR ("#include <stdio.h>\n\n"
+           "int main() {\n"
+           "  puts(\"Hello World\");\n"
+           "}\n"),
+      NULL
+  );
+  ON_ERR (fs_err);
+
+  fs_err = c_fs_file_close (&file);
+  ON_ERR (fs_err);
 }
 
 CError
@@ -202,7 +293,6 @@ internal_ccmd_on_build (CCmd* self)
   ON_ERR (dl_err);
 
   CError (*build_fn) (CBuild*);
-  /// FIXME: the function will not called build
   dl_err = c_dl_loader_get (
       &dll_loader,
       build_function_name.data,
@@ -244,6 +334,7 @@ internal_ccmd_on_doc (CCmd* self)
 CError
 internal_ccmd_on_fmt (CCmd* self)
 {
+  // clang-format
 }
 
 CError
