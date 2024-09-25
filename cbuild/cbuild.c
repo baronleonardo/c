@@ -584,8 +584,9 @@ internal_cbuild_target_compile (CBuild* self, CBuildTargetImpl* target)
       arr_err = c_array_push (&cmd, &(void*){ NULL });
       assert (arr_err.code == 0);
 
-      /// FIXME: do something with the returned status
-      cprocess_exec ((char const* const*) cmd.data, cmd.len);
+      int process_status =
+          cprocess_exec ((char const* const*) cmd.data, cmd.len);
+      assert (process_status == 0);
 
       // $ <compiler> <cflags> -c <source>
       arr_err = c_array_pop (&cmd, NULL);
@@ -728,7 +729,8 @@ internal_cbuild_target_build_library (CBuild* self, CBuildTargetImpl* target)
   arr_err = c_array_push (&cmd, &(void*){ NULL });
   assert (arr_err.code == 0);
 
-  cprocess_exec ((char const* const*) cmd.data, cmd.len);
+  int process_status = cprocess_exec ((char const* const*) cmd.data, cmd.len);
+  assert (process_status == 0);
 
   target->install_path.data[old_target_install_path_len] = '\0';
   target->install_path.len = old_target_install_path_len;
@@ -845,7 +847,8 @@ internal_cbuild_target_link (CBuild* self, CBuildTargetImpl* target)
   arr_err = c_array_push (&cmd, &(void*){ NULL });
   assert (arr_err.code == 0);
 
-  cprocess_exec ((char const* const*) cmd.data, cmd.len);
+  int process_status = cprocess_exec ((char const* const*) cmd.data, cmd.len);
+  assert (process_status == 0);
 
   target->install_path.data[old_target_install_path_len] = '\0';
   target->install_path.len = old_target_install_path_len;
