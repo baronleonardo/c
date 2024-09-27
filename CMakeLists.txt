@@ -18,7 +18,8 @@ if(WIN32)
         /sdl # enable security features
         /analyze # enable static analysis
         /permissive- # standards conformance mode
-        /utf-8 $<$<CONFIG:Debug>:/Zi>
+        /utf-8
+        $<$<CONFIG:Debug>:/Zi>
         /wd4200 # C4200 zero-sized array in struct/union
         /wd4820 # C4200 padding in struct/union
     )

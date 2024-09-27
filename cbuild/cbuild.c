@@ -24,7 +24,7 @@ static char default_cflags_none[] = "";
 static char default_lflags_none[] = "";
 #ifdef _WIN32
 static char default_cflags_debug[] = "/Zi /utf-8";
-static char default_lflags_debug[] = "";
+static char default_lflags_debug[] = "/PDB";
 static char default_cflags_release[] = "/O2 /DNDEBUG";
 static char default_lflags_release[] = "";
 static char default_cflags_release_with_debug_info[] = "/O2 /Zi /DNDEBUG";
@@ -48,7 +48,7 @@ static char const default_object_argument[] = "";
 static char const default_include_path_flag[] = "/I";
 static char const default_link_library_path_flag[] = "/LIBPATH:";
 static char const default_link_with_library_flag[] = "/LIB:";
-static char const default_shared_library_argument[] = "/DLL";
+static char const default_shared_library_argument[] = "/DLL /DEBUG";
 static char const default_static_library_argument[] = "";
 #else
 static char default_cflags_debug[] = "-g";
@@ -176,12 +176,7 @@ cbuild_create (
       switch (btype)
         {
         case CBUILD_TYPE_debug:
-          str_err =
-              c_str_create (STR (default_cflags_debug), &out_cbuild->cflags);
-          assert (str_err.code == 0); /* lflags*/
-          str_err =
-              c_str_create (STR (default_lflags_debug), &out_cbuild->lflags);
-          assert (str_err.code == 0);
+          CBUILD_CREATE_T (debug);
           break;
 
         case CBUILD_TYPE_release:
@@ -1151,6 +1146,12 @@ internal_find_and_push_all_compiled_objects_cstr_handler (
     }
 
   return fs_err;
+}
+
+void
+cbuild_print ()
+{
+  puts ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 }
 
 #ifdef _MSC_VER

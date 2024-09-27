@@ -8,6 +8,12 @@
 #include <array.h>
 #include <str.h>
 
+#ifdef _WIN32
+#define __C_EXPORT__ __declspec (dllexport)
+#else
+#define __C_EXPORT__
+#endif
+
 typedef enum CBuildType
 {
   CBUILD_TYPE_none,
@@ -63,45 +69,47 @@ typedef struct CBuild
 } CBuild;
 
 // target create
-CError cbuild_object_create (
+__C_EXPORT__ CError cbuild_object_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-CError cbuild_static_lib_create (
+__C_EXPORT__ CError cbuild_static_lib_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-CError cbuild_shared_lib_create (
+__C_EXPORT__ CError cbuild_shared_lib_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-CError cbuild_exe_create (
+__C_EXPORT__ CError cbuild_exe_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 
-CError cbuild_target_add_source (
+__C_EXPORT__ CError cbuild_target_add_source (
     CBuild* self,
     CTarget* target,
     char const source_path[],
     size_t source_path_len
 );
 
-CError cbuild_target_add_include_dir (
+__C_EXPORT__ CError cbuild_target_add_include_dir (
     CBuild* self,
     CTarget* target,
     char const include_path[],
     size_t include_path_len
 );
 
-CError cbuild_target_depends_on (
+__C_EXPORT__ CError cbuild_target_depends_on (
     CBuild* self, CTarget* target, CTarget* depend_on, CTargetProperty resource
 );
 
-CError cbuild_target_add_compile_flag (
+__C_EXPORT__ CError cbuild_target_add_compile_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
-CError cbuild_target_add_link_flag (
+__C_EXPORT__ CError cbuild_target_add_link_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
-void cbuild_target_destroy (CBuild* self, CTarget* target);
+__C_EXPORT__ void cbuild_target_destroy (CBuild* self, CTarget* target);
+
+__C_EXPORT__ void cbuild_print ();
 
 #endif // CBUILD_H

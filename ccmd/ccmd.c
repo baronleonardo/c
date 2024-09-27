@@ -182,6 +182,8 @@ internal_ccmd_on_init (CCmd* self)
 
   fs_err = c_fs_file_close (&file);
   ON_ERR (fs_err);
+
+  return CERROR_none;
 }
 
 CError
@@ -254,7 +256,19 @@ internal_ccmd_on_build (CCmd* self)
 
 #ifdef _WIN32
   err = cbuild_target_add_link_flag (
-      &cbuild, &build_target, STR (" /FORCE:UNRESOLVED /EXPORT:build ")
+      &cbuild, &build_target, STR ("/FORCE:UNRESOLVED")
+  );
+  ON_ERR (err);
+
+  CStr export_flag;
+  str_err = c_str_create (STR ("/EXPORT:"), &export_flag);
+  ON_ERR (str_err);
+
+  str_err = c_str_append (&export_flag, &build_function_name);
+  ON_ERR (str_err);
+
+  err = cbuild_target_add_link_flag (
+      &cbuild, &build_target, export_flag.data, export_flag.len
   );
   ON_ERR (err);
 #endif
@@ -321,21 +335,25 @@ internal_ccmd_on_build (CCmd* self)
 CError
 internal_ccmd_on_run (CCmd* self)
 {
+  return CERROR_none;
 }
 
 CError
 internal_ccmd_on_test (CCmd* self)
 {
+  return CERROR_none;
 }
 
 CError
 internal_ccmd_on_doc (CCmd* self)
 {
+  return CERROR_none;
 }
 
 CError
 internal_ccmd_on_fmt (CCmd* self)
 {
+  return CERROR_none;
   // clang-format
 }
 

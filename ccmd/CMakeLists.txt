@@ -8,8 +8,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PRIVATE c::fs c::dl_loader
-    PUBLIC utils cbuild
+    PRIVATE c::fs c::dl_loader cbuild
+    PUBLIC utils
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "C_VER=\"${CMAKE_PROJECT_VERSION}\"")
