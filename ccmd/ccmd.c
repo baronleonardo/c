@@ -119,7 +119,7 @@ internal_ccmd_on_init (CCmd* self)
       &file,
       STR ("#include \"cbuild.h\"\n\n"
            "CError build(CBuild* self) {\n"
-           "  CBuildTarget target;\n"
+           "  CTarget target;\n"
            "  CError err = cbuild_exe_create (self, \"target\", "
            "sizeof(\"target\") - 1, &target);\n"
            "  if (err.code != 0)\n"
@@ -223,7 +223,7 @@ internal_ccmd_on_build (CCmd* self)
   ON_ERR (err);
 
   /// create a shared library for build.c
-  CBuildTarget build_target;
+  CTarget build_target;
   err = cbuild_shared_lib_create (&cbuild, STR ("_"), &build_target);
   ON_ERR (err);
 
@@ -314,6 +314,8 @@ internal_ccmd_on_build (CCmd* self)
   c_str_destroy (&cur_exe_dir);
   cbuild_target_destroy (&cbuild, &build_target);
   cbuild_destroy (&cbuild);
+
+  return err;
 }
 
 CError
@@ -352,6 +354,8 @@ internal_ccmd_on_help (CCmd* self)
           "  fmt\t\tFormat the current project\n"
           "  help\t\tPrint this message\n"
           "  version\tPrint c version\n");
+
+  return CERROR_none;
 }
 
 CError
@@ -360,6 +364,8 @@ internal_ccmd_on_version (CCmd* self)
   (void) self;
 
   printf ("Version %s\n", C_VER);
+
+  return CERROR_none;
 }
 
 void
@@ -414,9 +420,7 @@ internal_find_build_function_name (
         {
           continue;
         }
-      str_err = c_str_concatenate_with_cstr (
-          out_function_name_buf, buf.data, 1, true
-      );
+      str_err = c_str_append_with_cstr (out_function_name_buf, buf.data, 1);
       ON_ERR (str_err);
       buf.data++;
 
@@ -424,9 +428,7 @@ internal_find_build_function_name (
              ((*buf.data <= '9') && (*buf.data >= '0')) ||
              ((*buf.data <= 'Z') && (*buf.data >= 'A')) || *buf.data == '_')
         {
-          str_err = c_str_concatenate_with_cstr (
-              out_function_name_buf, buf.data, 1, true
-          );
+          str_err = c_str_append_with_cstr (out_function_name_buf, buf.data, 1);
           ON_ERR (str_err);
           buf.data++;
         }

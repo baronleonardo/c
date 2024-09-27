@@ -17,13 +17,22 @@ typedef enum CBuildType
   CBUILD_TYPE_release_with_minimum_size,
 } CBuildType;
 
-typedef enum CBuildTargetType
+typedef enum CTargetType
 {
-  CBUILD_TARGET_TYPE_object,
-  CBUILD_TARGET_TYPE_executable,
-  CBUILD_TARGET_TYPE_shared,
-  CBUILD_TARGET_TYPE_static,
-} CBuildTargetType;
+  CTARGET_TYPE_object,
+  CTARGET_TYPE_executable,
+  CTARGET_TYPE_shared,
+  CTARGET_TYPE_static,
+} CTargetType;
+
+typedef enum CTargetProperty
+{
+  CTARGET_PROPERTY_objects,
+  CTARGET_PROPERTY_library,
+  CTARGET_PROPERTY_library_with_rpath,
+  CTARGET_PROPERTY_cflags,
+  CTARGET_PROPERTY_lflags,
+} CTargetProperty;
 
 typedef struct CTargetSource
 {
@@ -31,11 +40,11 @@ typedef struct CTargetSource
   size_t path_len;
 } CTargetSource;
 
-typedef struct CBuildTargetImpl CBuildTargetImpl;
-typedef struct CBuildTarget
+typedef struct CTargetImpl CTargetImpl;
+typedef struct CTarget
 {
-  CBuildTargetImpl* impl;
-} CBuildTarget;
+  CTargetImpl* impl;
+} CTarget;
 
 typedef struct CBuild
 {
@@ -50,38 +59,49 @@ typedef struct CBuild
   } cmds;
   CStr cflags;
   CStr lflags;
-  CArray targets; // CArray<CBuildTargetImpl*>
+  CArray targets; // CArray<CTargetImpl*>
 } CBuild;
 
 // target create
 CError cbuild_object_create (
-    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+    CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 CError cbuild_static_lib_create (
-    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+    CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 CError cbuild_shared_lib_create (
-    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+    CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 CError cbuild_exe_create (
-    CBuild* self, char const* name, size_t name_len, CBuildTarget* out_target
+    CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 
 CError cbuild_target_add_source (
     CBuild* self,
-    CBuildTarget* target,
+    CTarget* target,
     char const source_path[],
     size_t source_path_len
 );
 
+CError cbuild_target_add_include_dir (
+    CBuild* self,
+    CTarget* target,
+    char const include_path[],
+    size_t include_path_len
+);
+
+CError cbuild_target_depends_on (
+    CBuild* self, CTarget* target, CTarget* depend_on, CTargetProperty resource
+);
+
 CError cbuild_target_add_compile_flag (
-    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
+    CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
 CError cbuild_target_add_link_flag (
-    CBuild* self, CBuildTarget* target, char const flag[], size_t flag_len
+    CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
-void cbuild_target_destroy (CBuild* self, CBuildTarget* target);
+void cbuild_target_destroy (CBuild* self, CTarget* target);
 
 #endif // CBUILD_H

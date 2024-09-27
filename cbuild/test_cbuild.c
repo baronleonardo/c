@@ -14,7 +14,7 @@ main (void)
   CError err = cbuild_create (CBUILD_TYPE_debug, ".", 1, &cbuild);
   assert (err.code == 0);
 
-  CBuildTarget target;
+  CTarget target;
   err = cbuild_exe_create (&cbuild, STR ("t"), &target);
   assert (err.code == 0);
 
@@ -22,7 +22,7 @@ main (void)
       cbuild_target_add_source (&cbuild, &target, STR ("build/cbuild/main.c"));
   assert (err.code == 0);
 
-  CBuildTarget target2;
+  CTarget target2;
   err = cbuild_shared_lib_create (&cbuild, STR ("t2"), &target2);
   assert (err.code == 0);
 
@@ -30,7 +30,7 @@ main (void)
       cbuild_target_add_source (&cbuild, &target2, STR ("build/cbuild/main.c"));
   assert (err.code == 0);
 
-  CBuildTarget target3;
+  CTarget target3;
   err = cbuild_static_lib_create (&cbuild, STR ("t3"), &target3);
   assert (err.code == 0);
 

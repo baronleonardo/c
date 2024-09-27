@@ -22,6 +22,9 @@ typedef struct CError
 #define CERROR_build_function_not_found                                        \
   ((CError){ .code = 260,                                                      \
              .msg = "build function `CError (*)(CBuild*)` not found" })
+#define CERROR_invalid_string                                                  \
+  ((CError){ .code = 261,                                                      \
+             .msg = "Invalid input string, must be zero terminated" })
 
 // #define CERROR_fs(m) ((CError){ .code = 260, .msg = m })
 // #define CERROR_arr(m) ((CError){ .code = 261, .msg = m })

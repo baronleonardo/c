@@ -3,16 +3,16 @@
 
 #include "cbuild.h"
 
-struct CBuildTargetImpl
+struct CTargetImpl
 {
-  CBuildTargetType ttype;
+  CTargetType ttype;
   CStr name;
   CStr build_path;
   CStr install_path;
   CStr cflags;
   CStr lflags;
   CArray sources;      // CArray< CStr >
-  CArray dependencies; // CArray< CBuildTargetImpl* >
+  CArray dependencies; // CArray< CTargetImpl* >
 };
 
 CError cbuild_create (
