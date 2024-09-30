@@ -11,6 +11,7 @@
 #include <fs.h>
 
 #define STR(s) (s), sizeof (s) - 1
+#define STR_INV(s) sizeof (s) - 1, (s)
 #define ON_ERR(err)                                                            \
   ((err.code != 0)                                                             \
        ? (fprintf (stderr, "%d: %s\n", err.code, err.msg), abort ())           \
@@ -255,22 +256,29 @@ internal_ccmd_on_build (CCmd* self)
   c_str_destroy (&cflags);
 
 #ifdef _WIN32
+  CStr lflags;
+  str_err = c_str_create_empty (c_fs_path_get_max_len (), &lflags);
+  ON_ERR (str_err);
+
+  str_err = c_str_format (
+      &lflags,
+      0,
+      STR_INV ("/FORCE:UNRESOLVED /EXPORT:%s %s%c%s%c%s"),
+      build_function_name.data,
+      cur_exe_dir.data,
+      path_separator,
+      "lib",
+      path_separator,
+      "cbuild.lib"
+  );
+  ON_ERR (str_err);
+
   err = cbuild_target_add_link_flag (
-      &cbuild, &build_target, STR ("/FORCE:UNRESOLVED")
+      &cbuild, &build_target, lflags.data, lflags.len
   );
   ON_ERR (err);
 
-  CStr export_flag;
-  str_err = c_str_create (STR ("/EXPORT:"), &export_flag);
-  ON_ERR (str_err);
-
-  str_err = c_str_append (&export_flag, &build_function_name);
-  ON_ERR (str_err);
-
-  err = cbuild_target_add_link_flag (
-      &cbuild, &build_target, export_flag.data, export_flag.len
-  );
-  ON_ERR (err);
+  c_str_destroy (&lflags);
 #endif
 
   err = cbuild_build (&cbuild);
