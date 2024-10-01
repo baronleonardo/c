@@ -65,5 +65,4 @@ target_link_libraries(${PROJECT_NAME}
         ccmd
         $<$<PLATFORM_ID:Linux>:dl>
 )
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
-set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)
+install(TARGETS ${PROJECT_NAME})

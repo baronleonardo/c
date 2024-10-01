@@ -60,9 +60,9 @@ static char default_lflags_release_with_debug_info[] = "";
 static char default_cflags_release_with_minimum_size[] = "-Os -DNDEBUG";
 static char default_lflags_release_with_minimum_size[] = "";
 
-static char const default_cmd_compiler[] = "clang";
-static char const default_cmd_linker[] = "clang";
-static char const default_cmd_shared_library_creator[] = "clang";
+static char const default_cmd_compiler[] = "gcc";
+static char const default_cmd_linker[] = "gcc";
+static char const default_cmd_shared_library_creator[] = "gcc";
 static char const default_cmd_static_library_creator[] = "ar";
 
 static char const default_object_extension[] = ".o";
@@ -762,6 +762,15 @@ internal_cbuild_target_build_library (CBuild* self, CTargetImpl* target)
       assert (arr_err.code == 0);
     }
 
+  // object files
+  c_fs_foreach (
+      target->build_path.data,
+      target->build_path.len,
+      target->build_path.capacity,
+      &internal_find_and_push_all_compiled_objects_handler,
+      (void*) &cmd
+  );
+
   // $ <lib creator> <lflags>
   CStr lflags;
   c_str_error_t str_err = c_str_clone (&target->lflags, &lflags);
@@ -843,14 +852,6 @@ internal_cbuild_target_build_library (CBuild* self, CTargetImpl* target)
 
   size_t current_cmd_len = cmd.len;
 
-  c_fs_foreach (
-      target->build_path.data,
-      target->build_path.len,
-      target->build_path.capacity,
-      &internal_find_and_push_all_compiled_objects_handler,
-      (void*) &cmd
-  );
-
   arr_err = c_array_push (&cmd, &(void*){ NULL });
   assert (arr_err.code == 0);
 
@@ -906,6 +907,15 @@ internal_cbuild_target_link (CBuild* self, CTargetImpl* target)
   arr_err = c_array_push (&cmd, &self->cmds.linker.data);
   assert (arr_err.code == 0);
 
+  // object files
+  c_fs_foreach (
+      target->build_path.data,
+      target->build_path.len,
+      target->build_path.capacity,
+      &internal_find_and_push_all_compiled_objects_handler,
+      (void*) &cmd
+  );
+
   // $ <compiler> <lflags>
   CStr lflags;
   c_str_error_t str_err = c_str_clone (&target->lflags, &lflags);
@@ -960,14 +970,6 @@ internal_cbuild_target_link (CBuild* self, CTargetImpl* target)
 #endif
 
   size_t current_cmd_len = cmd.len;
-
-  c_fs_foreach (
-      target->build_path.data,
-      target->build_path.len,
-      target->build_path.capacity,
-      &internal_find_and_push_all_compiled_objects_handler,
-      (void*) &cmd
-  );
 
   arr_err = c_array_push (&cmd, &(void*){ NULL });
   assert (arr_err.code == 0);
@@ -1146,12 +1148,6 @@ internal_find_and_push_all_compiled_objects_cstr_handler (
     }
 
   return fs_err;
-}
-
-void
-cbuild_print ()
-{
-  puts ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 }
 
 #ifdef _MSC_VER

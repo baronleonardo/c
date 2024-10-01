@@ -234,31 +234,28 @@ internal_ccmd_on_build (CCmd* self)
   ON_ERR (err);
 
   /// compile flags
-  CStr cflags;
-  char path_separator;
-  c_fs_path_get_separator (&path_separator);
-  c_str_create_empty (c_fs_path_get_max_len (), &cflags);
-  // "-fpic -I<exe dir>/include"
-  cflags.len = snprintf (
-      cflags.data,
-      cflags.capacity,
-      "%s %s%s%c%s",
-      default_pic_flag,
-      default_include_dir_flag,
-      cur_exe_dir.data,
-      path_separator,
-      "include"
-  );
   err = cbuild_target_add_compile_flag (
-      &cbuild, &build_target, cflags.data, cflags.len
+      &cbuild, &build_target, STR (default_pic_flag)
   );
   ON_ERR (err);
-  c_str_destroy (&cflags);
+
+  err = cbuild_target_add_link_flag (
+      &cbuild,
+      &build_target,
+#ifdef _WIN32
+      STR ("/LIB:cbuild")
+#else
+      STR ("-lcbuild")
+#endif
+  );
+  ON_ERR (err);
 
 #ifdef _WIN32
   CStr lflags;
   str_err = c_str_create_empty (c_fs_path_get_max_len (), &lflags);
   ON_ERR (str_err);
+  char path_separator;
+  c_fs_path_get_separator (&path_separator);
 
   str_err = c_str_format (
       &lflags,

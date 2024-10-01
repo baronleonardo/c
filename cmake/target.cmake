@@ -1,14 +1,16 @@
 # example for how to use
 # ---
 # c_create_targets(<target name>
-#     PRIVATE_LIBS <libs>
-#     PUBLIC_LIBS <libs>
-#     TESTING_LIBS <libs>
-#     EXTRA_SOURCES <.c/.h files>
+#     PRIVATE_LIBS          <libs>
+#     PUBLIC_LIBS           <libs>
+#     TESTING_LIBS          <libs>
+#     EXTRA_SOURCES         <.c/.h files>
+#     NO_TESTS_FOR_NOW      ON/OFF
 # )
 
 function (c_create_targets target_name)
     set(multiValueArgs TARGETS
+        TYPE
         PRIVATE_LIBS
         PUBLIC_LIBS
         TESTING_LIBS
@@ -19,7 +21,7 @@ function (c_create_targets target_name)
                         "${multiValueArgs}" ${ARGN} )
 
     # create the library
-    add_library(${target_name}
+    add_library(${target_name} ${C_TARGET_TYPE}
         ${target_name}.c
         ${target_name}.h
         ${C_TARGET_EXTRA_SOURCES}
