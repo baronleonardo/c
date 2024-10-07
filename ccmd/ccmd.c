@@ -239,30 +239,43 @@ internal_ccmd_on_build (CCmd* self)
   );
   ON_ERR (err);
 
-  err = cbuild_target_add_link_flag (
-      &cbuild,
-      &build_target,
 #ifdef _WIN32
-      STR ("/LIB:cbuild")
-#else
-      STR ("-lcbuild")
-#endif
+  CStr cflags;
+  str_err = c_str_create_empty (c_fs_path_get_max_len (), &cflags);
+  char path_separator;
+  c_fs_path_get_separator (&path_separator);
+
+  str_err = c_str_format (
+      &cflags,
+      0,
+      STR_INV ("/I%s%c%s%c%s"),
+      cur_exe_dir.data,
+      path_separator,
+      "..",
+      path_separator,
+      "include"
+  );
+  ON_ERR (str_err);
+  err = cbuild_target_add_compile_flag (
+      &cbuild, &build_target, cflags.data, cflags.len
   );
   ON_ERR (err);
+  c_str_destroy (&cflags);
+#endif
 
 #ifdef _WIN32
   CStr lflags;
   str_err = c_str_create_empty (c_fs_path_get_max_len (), &lflags);
   ON_ERR (str_err);
-  char path_separator;
-  c_fs_path_get_separator (&path_separator);
 
   str_err = c_str_format (
       &lflags,
       0,
-      STR_INV ("/FORCE:UNRESOLVED /EXPORT:%s %s%c%s%c%s"),
+      STR_INV ("/EXPORT:%s %s%c%s%c%s%c%s"),
       build_function_name.data,
       cur_exe_dir.data,
+      path_separator,
+      "..",
       path_separator,
       "lib",
       path_separator,
@@ -274,7 +287,6 @@ internal_ccmd_on_build (CCmd* self)
       &cbuild, &build_target, lflags.data, lflags.len
   );
   ON_ERR (err);
-
   c_str_destroy (&lflags);
 #endif
 
@@ -294,6 +306,8 @@ internal_ccmd_on_build (CCmd* self)
       &cbuild_dll_path, cbuild_dll_path.capacity + sizeof (cbuild_dll_name)
   );
   ON_ERR (str_err);
+
+  cbuild_target_destroy (&cbuild, &build_target);
 
   fs_err = c_fs_path_append (
       cbuild_dll_path.data,
@@ -331,7 +345,6 @@ internal_ccmd_on_build (CCmd* self)
   c_str_destroy (&build_function_name);
   c_str_destroy (&cbuild_dll_path);
   c_str_destroy (&cur_exe_dir);
-  cbuild_target_destroy (&cbuild, &build_target);
   cbuild_destroy (&cbuild);
 
   return err;
