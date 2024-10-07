@@ -9,9 +9,13 @@
 #include <str.h>
 
 #ifdef _WIN32
-#define __C_EXPORT__ __declspec (dllexport)
+#ifdef __C_BUILD_DLL__
+#define __C_DLL__ __declspec (dllexport)
 #else
-#define __C_EXPORT__
+#define __C_DLL__ __declspec (dllimport)
+#endif
+#else
+#define __C_DLL__
 #endif
 
 typedef enum CBuildType
@@ -69,47 +73,45 @@ typedef struct CBuild
 } CBuild;
 
 // target create
-__C_EXPORT__ CError cbuild_object_create (
+__C_DLL__ CError cbuild_object_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-__C_EXPORT__ CError cbuild_static_lib_create (
+__C_DLL__ CError cbuild_static_lib_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-__C_EXPORT__ CError cbuild_shared_lib_create (
+__C_DLL__ CError cbuild_shared_lib_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
-__C_EXPORT__ CError cbuild_exe_create (
+__C_DLL__ CError cbuild_exe_create (
     CBuild* self, char const* name, size_t name_len, CTarget* out_target
 );
 
-__C_EXPORT__ CError cbuild_target_add_source (
+__C_DLL__ CError cbuild_target_add_source (
     CBuild* self,
     CTarget* target,
     char const source_path[],
     size_t source_path_len
 );
 
-__C_EXPORT__ CError cbuild_target_add_include_dir (
+__C_DLL__ CError cbuild_target_add_include_dir (
     CBuild* self,
     CTarget* target,
     char const include_path[],
     size_t include_path_len
 );
 
-__C_EXPORT__ CError cbuild_target_depends_on (
+__C_DLL__ CError cbuild_target_depends_on (
     CBuild* self, CTarget* target, CTarget* depend_on, CTargetProperty resource
 );
 
-__C_EXPORT__ CError cbuild_target_add_compile_flag (
+__C_DLL__ CError cbuild_target_add_compile_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
-__C_EXPORT__ CError cbuild_target_add_link_flag (
+__C_DLL__ CError cbuild_target_add_link_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
 
-__C_EXPORT__ void cbuild_target_destroy (CBuild* self, CTarget* target);
-
-__C_EXPORT__ void cbuild_print ();
+__C_DLL__ void cbuild_target_destroy (CBuild* self, CTarget* target);
 
 #endif // CBUILD_H

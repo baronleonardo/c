@@ -47,7 +47,7 @@ static char const default_out_argument[] = "/out:";
 static char const default_object_argument[] = "";
 static char const default_include_path_flag[] = "/I";
 static char const default_link_library_path_flag[] = "/LIBPATH:";
-static char const default_link_with_library_flag[] = "/LIB:";
+static char const default_link_with_library_flag[] = "";
 static char const default_shared_library_argument[] = "/DLL /DEBUG";
 static char const default_static_library_argument[] = "";
 #else
@@ -165,8 +165,8 @@ cbuild_create (
           &out_cbuild->cmds.static_lib_creator
       );
       assert (str_err.code == 0);
-      /// shared library creator
 
+      /// shared library creator
       str_err = c_str_create (
           STR (default_cmd_shared_library_creator),
           &out_cbuild->cmds.shared_lib_creator
@@ -386,7 +386,7 @@ cbuild_target_depends_on (
             default_link_library_path_flag,
             depend_on->impl->install_path.data,
             default_link_with_library_flag,
-            depend_on->impl->name
+            depend_on->impl->name.data
         );
         assert (str_err.code == 0);
 #ifndef _WIN32

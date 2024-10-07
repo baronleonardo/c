@@ -18,6 +18,7 @@ c_create_targets(${PROJECT_NAME}
     PUBLIC_LIBS     ${public_libs}
 )
 install(TARGETS ${PROJECT_NAME})
+target_compile_definitions(${PROJECT_NAME} PRIVATE __C_BUILD_DLL__)
 
 # install all public headers needed by this target
 foreach(lib ${public_libs})

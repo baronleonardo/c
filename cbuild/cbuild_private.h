@@ -15,15 +15,15 @@ struct CTargetImpl
   CArray dependencies; // CArray< CTargetImpl* >
 };
 
-CError cbuild_create (
+__C_DLL__ CError cbuild_create (
     CBuildType btype,
     char const base_path[],
     size_t base_path_len,
     CBuild* out_cbuild
 );
 
-CError cbuild_build (CBuild* self);
+__C_DLL__ CError cbuild_build (CBuild* self);
 
-void cbuild_destroy (CBuild* self);
+__C_DLL__ void cbuild_destroy (CBuild* self);
 
 #endif // CBUILD_PRIVATE_H
