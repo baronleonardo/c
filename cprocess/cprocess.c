@@ -28,7 +28,8 @@ cprocess_exec (char const* const command_line[], size_t commands_count)
       command_line,
       subprocess_option_inherit_environment |
           subprocess_option_search_user_path | subprocess_option_no_window |
-          subprocess_option_enable_async,
+          subprocess_option_enable_async |
+          subprocess_option_combined_stdout_stderr,
       &out_process
   );
 
@@ -62,7 +63,7 @@ cprocess_exec (char const* const command_line[], size_t commands_count)
         }
 #endif
       char buf[BUFSIZ] = { 0 };
-      while (subprocess_read_stderr (&out_process, buf, BUFSIZ))
+      while (subprocess_read_stdout (&out_process, buf, BUFSIZ))
         {
           printf ("%s", buf);
         }
