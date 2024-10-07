@@ -957,9 +957,10 @@ internal_cbuild_target_link (CBuild* self, CTargetImpl* target)
   snprintf (
       tmp,
       c_fs_path_get_max_len (),
-      "%s%s",
+      "%s%s%s",
       default_out_argument,
-      target->install_path.data
+      target->install_path.data,
+      default_exe_extension
   );
 
   arr_err = c_array_push (&cmd, &tmp);
