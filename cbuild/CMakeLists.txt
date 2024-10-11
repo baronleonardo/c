@@ -4,12 +4,13 @@ set(public_libs
     c::str
     c::array
     utils
-)
-
+    )
+    
 set(private_libs
     utils
     cprocess
     c::fs
+    jemalloc
 )
 
 c_create_targets(${PROJECT_NAME}
