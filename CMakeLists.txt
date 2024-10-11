@@ -54,10 +54,10 @@ project(c
     DESCRIPTION "this is a project/document/unittest management"
 )
 
-add_subdirectory(ccmd)
-add_subdirectory(cprocess)
-add_subdirectory(utils)
-add_subdirectory(cbuild)
+add_subdirectory(src/ccmd)
+add_subdirectory(src/cprocess)
+add_subdirectory(src/utils)
+add_subdirectory(src/cbuild)
 
 add_executable(${PROJECT_NAME} main.c)
 target_link_libraries(${PROJECT_NAME} 
