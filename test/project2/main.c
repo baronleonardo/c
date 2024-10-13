@@ -1,7 +1,9 @@
 #include <stdio.h>
 
+#include <calc.h>
+
 int
 main ()
 {
-  puts ("Hello, World!");
+  printf ("%d\n", add (1, 2));
 }
