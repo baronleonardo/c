@@ -69,6 +69,7 @@ typedef struct CBuild
   } cmds;
   CStr cflags;
   CStr lflags;
+  CStr link_with;
   CArray targets;        // CArray<CTargetImpl*>
   CArray other_projects; // CArray<CBuild>
 } CBuild;

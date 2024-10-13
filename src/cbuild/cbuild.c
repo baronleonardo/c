@@ -147,6 +147,10 @@ cbuild_create (
           create_flags (none);
         }
 
+      /// link_with
+      str_err = c_str_create (STR (""), &out_cbuild->link_with);
+      assert (str_err.code == 0);
+
       /// targets
       c_array_error_t arr_err =
           c_array_create (sizeof (CTargetImpl*), &out_cbuild->targets);
@@ -325,15 +329,23 @@ cbuild_target_depends_on (
     case CTARGET_PROPERTY_library:
     case CTARGET_PROPERTY_library_with_rpath:
       {
-        // -L<library path> -l<library>
+        // -L<library path>
         str_err = c_str_format (
             &target->impl->lflags,
             target->impl->lflags.len,
-            STR_INV (" %s%s %s%s"),
+            STR_INV (" %s%s"),
             default_builder->lflags.library_path,
-            depend_on->impl->install_path.data,
+            depend_on->impl->install_path.data
+        );
+        assert (str_err.code == 0);
+        // -l<library>
+        str_err = c_str_format (
+            &target->impl->link_with,
+            target->impl->link_with.len,
+            STR_INV (" %s%s"),
             default_builder->lflags.library,
             depend_on->impl->name.data
+
         );
         assert (str_err.code == 0);
 #ifndef _WIN32
@@ -351,7 +363,8 @@ cbuild_target_depends_on (
 #endif
 #ifdef _WIN32
         str_err = c_str_append_with_cstr (
-            &target->impl->lflags, STR2 (default_builder->extension.lib_static)
+            &target->impl->link_with,
+            STR2 (default_builder->extension.lib_static)
         );
         assert (str_err.code == 0);
 #endif
@@ -467,6 +480,7 @@ cbuild_target_destroy (CBuild* self, CTarget* target)
   c_str_destroy (&target->impl->install_path);
   c_str_destroy (&target->impl->cflags);
   c_str_destroy (&target->impl->lflags);
+  c_str_destroy (&target->impl->link_with);
   for (size_t i = 0; i < target->impl->sources.len; ++i)
     {
       c_str_destroy (&((CStr*) target->impl->sources.data)[i]);
@@ -639,6 +653,7 @@ cbuild_destroy (CBuild* self)
   c_str_destroy (&self->base_path);
   c_str_destroy (&self->cflags);
   c_str_destroy (&self->lflags);
+  c_str_destroy (&self->link_with);
   c_str_destroy (&self->cmds.compiler);
   c_str_destroy (&self->cmds.linker);
   c_str_destroy (&self->cmds.shared_lib_creator);
@@ -713,6 +728,9 @@ cbuild_target_create (
       assert (str_err.code == 0);
       // lflags
       str_err = c_str_create (lflags, lflags_len, &out_target->impl->lflags);
+      assert (str_err.code == 0);
+      // link_with
+      str_err = c_str_create (STR (""), &out_target->impl->link_with);
       assert (str_err.code == 0);
 
       // sources
@@ -863,6 +881,7 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
     }
 
   char const* lib_extenstion = NULL;
+  char const* flag_output = default_builder->flags.output;
 
   // $ <link creator>
   if (target->ttype == CTARGET_TYPE_static)
@@ -870,6 +889,15 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
       arr_err = c_array_push (&cmd, &self->cmds.static_lib_creator.data);
       assert (arr_err.code == 0);
       lib_extenstion = default_builder->extension.lib_static;
+      /// FIXME: very ugly hack
+      if (strcmp (
+              "ar",
+              &self->cmds.static_lib_creator
+                   .data[self->cmds.static_lib_creator.len - 2]
+          ) == 0)
+        {
+          flag_output = "";
+        }
     }
   else if (target->ttype == CTARGET_TYPE_shared)
     {
@@ -888,17 +916,6 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
       err = CERROR_invalid_target_type;
       goto Error_cmd;
     }
-
-  // object files
-  size_t start_cmd_len = cmd.len;
-  c_fs_foreach (
-      target->build_path.data,
-      target->build_path.len,
-      target->build_path.capacity,
-      &internal_find_and_push_all_compiled_objects_handler,
-      (void*) &cmd
-  );
-  size_t end_cmd_len = cmd.len;
 
   // $ <lib creator> <lflags>
   CStr lflags;
@@ -924,11 +941,12 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
 
   // -o<install_path>/lib<name>.so
   // -o<install path>/<name>
+  // <install path>/<name>.a
   str_err = c_str_format (
       &output,
       0,
       STR_INV ("%s%s%c%s%s%s"),
-      default_builder->flags.output,
+      flag_output,
       target->install_path.data,
       path_separator,
       target->ttype != CTARGET_TYPE_executable ? lib_prefix : "",
@@ -940,6 +958,33 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
   arr_err = c_array_push (&cmd, &output.data);
   assert (arr_err.code == 0);
 
+  // $ <lib creator> <lflags> <object files>
+  // object files
+  size_t start_cmd_len = cmd.len;
+  c_fs_foreach (
+      target->build_path.data,
+      target->build_path.len,
+      target->build_path.capacity,
+      &internal_find_and_push_all_compiled_objects_handler,
+      (void*) &cmd
+  );
+  size_t end_cmd_len = cmd.len;
+
+  // $ <lib creator> <lflags> <object files> <link with>
+  CStr link_with;
+  str_err = c_str_clone (&target->link_with, &link_with);
+  assert (str_err.code == 0);
+  subtoken = strtok (link_with.data, C_STR_WHITESPACES);
+  if (subtoken)
+    {
+      do
+        {
+          arr_err = c_array_push (&cmd, &subtoken);
+          assert (arr_err.code == 0);
+        }
+      while ((subtoken = strtok (NULL, C_STR_WHITESPACES)));
+    }
+
   arr_err = c_array_push (&cmd, &(void*){ NULL });
   assert (arr_err.code == 0);
 
@@ -948,6 +993,7 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
 
   // free
   c_str_destroy (&lflags);
+  c_str_destroy (&link_with);
   c_str_destroy (&output);
 
   // free the strdup we created at the handler
