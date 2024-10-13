@@ -11,6 +11,7 @@ struct CTargetImpl
   CStr install_path;
   CStr cflags;
   CStr lflags;
+  CStr link_with;
   CArray sources;      // CArray< CStr >
   CArray dependencies; // CArray< CTargetImpl* >
 };
