@@ -10,6 +10,7 @@ set(private_libs
     utils
     cprocess
     c::fs
+    c::dl_loader
     jemalloc
 )
 

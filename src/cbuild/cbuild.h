@@ -69,7 +69,8 @@ typedef struct CBuild
   } cmds;
   CStr cflags;
   CStr lflags;
-  CArray targets; // CArray<CTargetImpl*>
+  CArray targets;        // CArray<CTargetImpl*>
+  CArray other_projects; // CArray<CBuild>
 } CBuild;
 
 // target create
@@ -111,6 +112,9 @@ __C_DLL__ CError cbuild_target_add_compile_flag (
 __C_DLL__ CError cbuild_target_add_link_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
 );
+
+__C_DLL__ CError
+cbuild_depends_on (CBuild* self, char const* other_path, size_t other_path_len);
 
 __C_DLL__ void cbuild_target_destroy (CBuild* self, CTarget* target);
 

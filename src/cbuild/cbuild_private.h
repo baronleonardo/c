@@ -24,6 +24,22 @@ __C_DLL__ CError cbuild_create (
 
 __C_DLL__ CError cbuild_build (CBuild* self);
 
+__C_DLL__ CError cbuild_target_create (
+    CBuild* self,
+    char const* name,
+    size_t name_len,
+    CTarget* out_target,
+    char const lflags[],
+    size_t lflags_len,
+    CTargetType ttype
+);
+
+__C_DLL__ CError cbuild_target_build (CBuild* self, CTargetImpl* target);
+
+__C_DLL__ CError cbuild_target_compile (CBuild* self, CTargetImpl* target);
+
+__C_DLL__ CError cbuild_target_link (CBuild* self, CTargetImpl* target);
+
 __C_DLL__ void cbuild_destroy (CBuild* self);
 
 #endif // CBUILD_PRIVATE_H
