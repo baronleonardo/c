@@ -104,4 +104,9 @@ static CBuilder builders[] = {
   },
 };
 
+#ifdef _WIN32
+static char const builder_windows_compile_flag_obj_output_path[] = "/FoC:";
+static char const builder_windows_compile_flag_pdb_output_path[] = "/FdC:";
+#endif
+
 #endif // CBUILDER_PRIVATE_H

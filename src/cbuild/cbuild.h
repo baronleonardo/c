@@ -37,11 +37,12 @@ typedef enum CTargetType
 
 typedef enum CTargetProperty
 {
-  CTARGET_PROPERTY_objects,
-  CTARGET_PROPERTY_library,
-  CTARGET_PROPERTY_library_with_rpath,
-  CTARGET_PROPERTY_cflags,
-  CTARGET_PROPERTY_lflags,
+  CTARGET_PROPERTY_objects = 1 << 0,
+  CTARGET_PROPERTY_library = 1 << 1,
+  CTARGET_PROPERTY_library_with_rpath = 1 << 2,
+  CTARGET_PROPERTY_cflags = 1 << 3,
+  CTARGET_PROPERTY_lflags = 1 << 4,
+  CTARGET_PROPERTY_include_path = 1 << 5,
 } CTargetProperty;
 
 typedef struct CTargetSource
@@ -56,20 +57,10 @@ typedef struct CTarget
   CTargetImpl* impl;
 } CTarget;
 
+typedef struct CBuildImpl CBuildImpl;
 typedef struct CBuild
 {
-  CBuildType btype;
-  CStr base_path;
-  struct
-  {
-    CStr compiler;
-    CStr linker;
-    CStr static_lib_creator;
-    CStr shared_lib_creator;
-  } cmds;
-  CStr cflags;
-  CStr lflags;
-  CArray targets; // CArray<CTargetImpl*>
+  CBuildImpl* impl;
 } CBuild;
 
 // target create
@@ -110,6 +101,20 @@ __C_DLL__ CError cbuild_target_add_compile_flag (
 
 __C_DLL__ CError cbuild_target_add_link_flag (
     CBuild* self, CTarget* target, char const flag[], size_t flag_len
+);
+
+__C_DLL__ CError cbuild_target_get (
+    CBuild* self,
+    char const* target_name,
+    size_t target_name_len,
+    CTarget* out_target
+);
+
+__C_DLL__ CError cbuild_depends_on (
+    CBuild* self,
+    char const* other_cbuild_path,
+    size_t other_cbuild_path_len,
+    CBuild* out_other_cbuild
 );
 
 __C_DLL__ void cbuild_target_destroy (CBuild* self, CTarget* target);
