@@ -1023,7 +1023,8 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
   str_err = c_str_format (
       &obj_output,
       0,
-      STR_INV ("/Foc:%s%c%s"),
+      STR_INV ("%s%s%c%s"),
+      builder_windows_compile_flag_obj_output_path,
       target->build_path.data,
       separator,
       target->name.data
@@ -1040,7 +1041,8 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
   str_err = c_str_format (
       &pdb_output,
       0,
-      STR_INV ("/Fdc:%s%c%s"),
+      STR_INV ("%s%s%c%s"),
+      builder_windows_compile_flag_pdb_output_path,
       target->build_path.data,
       separator,
       target->name.data
