@@ -7,6 +7,7 @@ struct CTargetImpl
 {
   CTargetType ttype;
   CStr name;
+  CStr base_dir;
   CStr build_path;
   CStr install_path;
   CStr cflags;
@@ -16,6 +17,24 @@ struct CTargetImpl
   CArray dependencies; // CArray< CTargetImpl* >
 };
 
+struct CBuildImpl
+{
+  CBuildType btype;
+  CStr base_path;
+  struct
+  {
+    CStr compiler;
+    CStr linker;
+    CStr static_lib_creator;
+    CStr shared_lib_creator;
+  } cmds;
+  CStr cflags;
+  CStr lflags;
+  CStr link_with;
+  CArray targets;        // CArray< CTargetImpl* >
+  CArray other_projects; // CArray< CBuildImpl* >
+};
+
 __C_DLL__ CError cbuild_create (
     CBuildType btype,
     char const base_path[],
@@ -23,6 +42,7 @@ __C_DLL__ CError cbuild_create (
     CBuild* out_cbuild
 );
 
+__C_DLL__ CError cbuild_configure (CBuild* self);
 __C_DLL__ CError cbuild_build (CBuild* self);
 
 __C_DLL__ CError cbuild_target_create (

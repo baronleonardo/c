@@ -182,6 +182,8 @@ internal_ccmd_on_build (CCmd* self)
   CError err = cbuild_create (CBUILD_TYPE_debug, STR (project_path), &cbuild);
   ON_ERR (err);
 
+  err = cbuild_configure (&cbuild);
+  ON_ERR (err);
   err = cbuild_build (&cbuild);
   ON_ERR (err);
 
