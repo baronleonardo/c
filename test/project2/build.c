@@ -26,10 +26,11 @@ project2 (CBuild* cbuild)
   err = cbuild_target_get (&project1_cbuild, STR ("calc"), &calc_target);
   ON_ERR (err);
   err = cbuild_target_depends_on (
-      cbuild, &target, &calc_target, CTARGET_PROPERTY_library_with_rpath
+      cbuild,
+      &target,
+      &calc_target,
+      CTARGET_PROPERTY_include_path | CTARGET_PROPERTY_library_with_rpath
   );
-  ON_ERR (err);
-  err = cbuild_target_add_include_dir (cbuild, &target, STR ("../project1"));
   ON_ERR (err);
 
   return CERROR_none;

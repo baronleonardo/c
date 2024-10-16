@@ -26,7 +26,11 @@ project1 (CBuild* cbuild)
   ///////
 
   CTarget calc;
+#ifdef _WIN32
   err = cbuild_static_lib_create (cbuild, STR ("calc"), &calc);
+#else
+  err = cbuild_shared_lib_create (cbuild, STR ("calc"), &calc);
+#endif
   ON_ERR (err);
   err = cbuild_target_add_source (cbuild, &calc, STR ("calc.c"));
   ON_ERR (err);

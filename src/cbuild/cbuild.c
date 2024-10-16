@@ -314,164 +314,152 @@ cbuild_target_depends_on (
   c_str_error_t str_err = C_STR_ERROR_none;
   c_fs_error_t fs_err = C_FS_ERROR_NONE;
 
-  switch (property)
+  if ((property & CTARGET_PROPERTY_objects) == CTARGET_PROPERTY_objects)
     {
-    case CTARGET_PROPERTY_objects:
-      {
-        CStr build_path;
+      CStr build_path;
 
-        str_err = c_str_create_empty (c_fs_path_get_max_len (), &build_path);
-        assert (str_err.code == 0);
+      str_err = c_str_create_empty (c_fs_path_get_max_len (), &build_path);
+      assert (str_err.code == 0);
 
-        if (strcmp (
-                target->impl->base_dir.data, depend_on->impl->base_dir.data
-            ) != 0)
-          {
-            char separator;
-            c_fs_path_get_separator (&separator);
+      if (strcmp (
+              target->impl->base_dir.data, depend_on->impl->base_dir.data
+          ) != 0)
+        {
+          char separator;
+          c_fs_path_get_separator (&separator);
 
-            str_err = c_str_format (
-                &build_path,
-                0,
-                STR_INV ("%s%c%s"),
-                depend_on->impl->base_dir.data,
-                separator,
-                depend_on->impl->build_path.data
-            );
-            assert (str_err.code == 0);
-          }
-        else
-          {
-            str_err = c_str_append (&build_path, &depend_on->impl->build_path);
-            assert (str_err.code == 0);
-          }
+          str_err = c_str_format (
+              &build_path,
+              0,
+              STR_INV ("%s%c%s"),
+              depend_on->impl->base_dir.data,
+              separator,
+              depend_on->impl->build_path.data
+          );
+          assert (str_err.code == 0);
+        }
+      else
+        {
+          str_err = c_str_append (&build_path, &depend_on->impl->build_path);
+          assert (str_err.code == 0);
+        }
 
-        fs_err = c_fs_foreach (
-            build_path.data,
-            build_path.len,
-            build_path.capacity,
-            internal_find_and_push_all_compiled_objects_cstr_handler,
-            &target->impl->sources
-        );
-        assert (fs_err.code == 0);
+      fs_err = c_fs_foreach (
+          build_path.data,
+          build_path.len,
+          build_path.capacity,
+          internal_find_and_push_all_compiled_objects_cstr_handler,
+          &target->impl->sources
+      );
+      assert (fs_err.code == 0);
 
-        c_str_destroy (&build_path);
-      }
-      break;
-    case CTARGET_PROPERTY_library:
-    case CTARGET_PROPERTY_library_with_rpath:
-      {
-        CStr install_path; /*  = {
-           depend_on->impl->install_path.data,
-           depend_on->impl->install_path.len,
-           depend_on->impl->install_path.capacity,
-         }; */
+      c_str_destroy (&build_path);
+    }
+  if (((property & CTARGET_PROPERTY_library) == CTARGET_PROPERTY_library) ||
+      ((property & CTARGET_PROPERTY_library_with_rpath) ==
+       CTARGET_PROPERTY_library_with_rpath))
+    {
+      CStr install_path;
 
-        str_err = c_str_create_empty (c_fs_path_get_max_len (), &install_path);
-        assert (str_err.code == 0);
+      str_err = c_str_create_empty (c_fs_path_get_max_len (), &install_path);
+      assert (str_err.code == 0);
 
-        if (strcmp (
-                target->impl->base_dir.data, depend_on->impl->base_dir.data
-            ) != 0)
-          {
-            char separator;
-            c_fs_path_get_separator (&separator);
+      if (strcmp (
+              target->impl->base_dir.data, depend_on->impl->base_dir.data
+          ) != 0)
+        {
+          char separator;
+          c_fs_path_get_separator (&separator);
 
-            str_err = c_str_format (
-                &install_path,
-                0,
-                STR_INV ("%s%c%s"),
-                depend_on->impl->base_dir.data,
-                separator,
-                depend_on->impl->install_path.data
-            );
-            assert (str_err.code == 0);
-          }
-        else
-          {
-            str_err =
-                c_str_append (&install_path, &depend_on->impl->install_path);
-            assert (str_err.code == 0);
-          }
+          str_err = c_str_format (
+              &install_path,
+              0,
+              STR_INV ("%s%c%s"),
+              depend_on->impl->base_dir.data,
+              separator,
+              depend_on->impl->install_path.data
+          );
+          assert (str_err.code == 0);
+        }
+      else
+        {
+          str_err =
+              c_str_append (&install_path, &depend_on->impl->install_path);
+          assert (str_err.code == 0);
+        }
 
-        // -L<library path>
-        str_err = c_str_format (
-            &target->impl->lflags,
-            target->impl->lflags.len,
-            STR_INV (" %s%s"),
-            default_builder->lflags.library_path,
-            install_path.data
-        );
-        assert (str_err.code == 0);
-        // -l<library>
-        str_err = c_str_format (
-            &target->impl->link_with,
-            target->impl->link_with.len,
-            STR_INV (" %s%s"),
-            default_builder->lflags.library,
-            depend_on->impl->name.data
+      // -L<library path>
+      str_err = c_str_format (
+          &target->impl->lflags,
+          target->impl->lflags.len,
+          STR_INV (" %s%s"),
+          default_builder->lflags.library_path,
+          install_path.data
+      );
+      assert (str_err.code == 0);
+      // -l<library>
+      str_err = c_str_format (
+          &target->impl->link_with,
+          target->impl->link_with.len,
+          STR_INV (" %s%s"),
+          default_builder->lflags.library,
+          depend_on->impl->name.data
 
-        );
-        assert (str_err.code == 0);
+      );
+      assert (str_err.code == 0);
 #ifndef _WIN32
-        if (property == CTARGET_PROPERTY_library_with_rpath)
-          {
-            // -Wl,-rpath,<library path>
-            str_err = c_str_format (
-                &target->impl->lflags,
-                target->impl->lflags.len,
-                STR_INV (" -Wl,-rpath,%s"),
-                install_path.data
-            );
-            assert (str_err.code == 0);
-          }
+      if ((property & CTARGET_PROPERTY_library_with_rpath) ==
+          CTARGET_PROPERTY_library_with_rpath)
+        {
+          // -Wl,-rpath,<library path>
+          str_err = c_str_format (
+              &target->impl->lflags,
+              target->impl->lflags.len,
+              STR_INV (" -Wl,-rpath,%s"),
+              install_path.data
+          );
+          assert (str_err.code == 0);
+        }
 #endif
 #ifdef _WIN32
-        str_err = c_str_append_with_cstr (
-            &target->impl->link_with,
-            STR2 (default_builder->extension.lib_static)
-        );
-        assert (str_err.code == 0);
+      str_err = c_str_append_with_cstr (
+          &target->impl->link_with, STR2 (default_builder->extension.lib_static)
+      );
+      assert (str_err.code == 0);
 #endif
 
-        c_str_destroy (&install_path);
-      }
-      break;
-    case CTARGET_PROPERTY_cflags:
-      {
-        str_err = c_str_format (
-            &target->impl->cflags,
-            target->impl->cflags.len,
-            STR_INV (" %s"),
-            depend_on->impl->cflags.data
-        );
-        assert (str_err.code == 0);
-      }
-      break;
-    case CTARGET_PROPERTY_lflags:
-      {
-        str_err = c_str_format (
-            &target->impl->lflags,
-            target->impl->lflags.len,
-            STR_INV (" %s"),
-            depend_on->impl->lflags.data
-        );
-        assert (str_err.code == 0);
-      }
-      break;
-    case CTARGET_PROPERTY_include_path:
-      {
-        CError err = cbuild_target_add_include_dir (
-            self,
-            target,
-            depend_on->impl->base_dir.data,
-            depend_on->impl->base_dir.len
-        );
-        assert (err.code == 0);
-        break;
-      }
-    default:
-      break;
+      c_str_destroy (&install_path);
+    }
+  if ((property & CTARGET_PROPERTY_cflags) == CTARGET_PROPERTY_cflags)
+    {
+      str_err = c_str_format (
+          &target->impl->cflags,
+          target->impl->cflags.len,
+          STR_INV (" %s"),
+          depend_on->impl->cflags.data
+      );
+      assert (str_err.code == 0);
+    }
+  if ((property & CTARGET_PROPERTY_lflags) == CTARGET_PROPERTY_lflags)
+    {
+      str_err = c_str_format (
+          &target->impl->lflags,
+          target->impl->lflags.len,
+          STR_INV (" %s"),
+          depend_on->impl->lflags.data
+      );
+      assert (str_err.code == 0);
+    }
+  if ((property & CTARGET_PROPERTY_include_path) ==
+      CTARGET_PROPERTY_include_path)
+    {
+      CError err = cbuild_target_add_include_dir (
+          self,
+          target,
+          depend_on->impl->base_dir.data,
+          depend_on->impl->base_dir.len
+      );
+      assert (err.code == 0);
     }
 
   return CERROR_none;
