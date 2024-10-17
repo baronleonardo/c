@@ -86,6 +86,20 @@ internal_ccmd_on_init (CCmd* self)
   );
   ON_ERR (fs_err);
 
+  /// FIXME: we will have an option for project name
+  // create empty <project folder>
+  fs_err = c_fs_path_append (
+      project_path.data,
+      project_path.len,
+      project_path.capacity,
+      STR ("example"),
+      &project_path.len
+  );
+  ON_ERR (fs_err);
+  fs_err = c_fs_dir_create (project_path.data, project_path.len);
+  ON_ERR (fs_err);
+
+  /// <project folder>/build.c
   size_t const orig_len = project_path.len;
   fs_err = c_fs_path_append (
       project_path.data,
@@ -102,24 +116,26 @@ internal_ccmd_on_init (CCmd* self)
 
   fs_err = c_fs_file_write (
       &file,
+      // clang-format off
       STR ("#include \"cbuild.h\"\n\n"
-           "CError build(CBuild* self) {\n"
+           "CError build (CBuild* self)\n"
+           "{\n"
            "  CTarget target;\n"
-           "  CError err = cbuild_exe_create (self, \"target\", "
-           "sizeof(\"target\") - 1, &target);\n"
+           "  CError err = cbuild_exe_create (\n"
+           "    self, \"target\", sizeof (\"target\") - 1, &target);\n"
            "  if (err.code != 0)\n"
            "    {\n"
            "      return err;\n"
            "    }\n\n"
-           "  err = cbuild_target_add_source (self, &target, "
-           "\"module1/main.c\", "
-           "  sizeof(\"module1/main.c\") - 1);\n"
+           "  err = cbuild_target_add_source (\n"
+           "    self, &target, \"src.module1/main.c\", sizeof (\"src/module1/main.c\") - 1);\n"
            "  if (err.code != 0)\n"
            "    {\n"
            "      return err;\n"
            "    }\n\n"
            "  return CERROR_none;\n"
            "}\n"),
+      // clang-format on
       NULL
   );
   ON_ERR (fs_err);
@@ -127,22 +143,34 @@ internal_ccmd_on_init (CCmd* self)
   fs_err = c_fs_file_close (&file);
   ON_ERR (fs_err);
 
+  /// <project folder>
   project_path.len = orig_len;
   project_path.data[project_path.len] = '\0';
+  /// <project folder>/src
   fs_err = c_fs_path_append (
       project_path.data,
       project_path.len,
       project_path.capacity,
-      STR ("example"),
+      STR ("src"),
       &project_path.len
   );
   ON_ERR (fs_err);
-
   fs_err = c_fs_dir_create (project_path.data, project_path.len);
   ON_ERR (fs_err);
 
-  // size_t example_dir_path_len = project_path.len;
-  project_path.data[project_path.len] = '\0';
+  /// <project folder>/src/module1
+  fs_err = c_fs_path_append (
+      project_path.data,
+      project_path.len,
+      project_path.capacity,
+      STR ("module1"),
+      &project_path.len
+  );
+  ON_ERR (fs_err);
+  fs_err = c_fs_dir_create (project_path.data, project_path.len);
+  ON_ERR (fs_err);
+
+  /// <project folder>/src/module1/example.c
   fs_err = c_fs_path_append (
       project_path.data,
       project_path.len,
@@ -167,6 +195,8 @@ internal_ccmd_on_init (CCmd* self)
 
   fs_err = c_fs_file_close (&file);
   ON_ERR (fs_err);
+
+  c_str_destroy (&project_path);
 
   return CERROR_none;
 }
