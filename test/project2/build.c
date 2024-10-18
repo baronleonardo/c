@@ -17,7 +17,7 @@ project2 (CBuild* cbuild)
   err = cbuild_depends_on (cbuild, STR ("../project1"), &project1_cbuild);
   ON_ERR (err);
 
-  err = cbuild_exe_create (cbuild, STR ("main"), &target);
+  err = cbuild_exe_create (cbuild, STR ("main"), STR ("."), &target);
   ON_ERR (err);
   err = cbuild_target_add_source (cbuild, &target, STR ("main.c"));
   ON_ERR (err);

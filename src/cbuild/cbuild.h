@@ -65,16 +65,36 @@ typedef struct CBuild
 
 // target create
 __C_DLL__ CError cbuild_object_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 );
 __C_DLL__ CError cbuild_static_lib_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 );
 __C_DLL__ CError cbuild_shared_lib_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 );
 __C_DLL__ CError cbuild_exe_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 );
 
 __C_DLL__ CError cbuild_target_add_source (
@@ -84,7 +104,14 @@ __C_DLL__ CError cbuild_target_add_source (
     size_t source_path_len
 );
 
-__C_DLL__ CError cbuild_target_add_include_dir (
+__C_DLL__ CError cbuild_target_set_include_path (
+    CBuild* self,
+    CTarget* target,
+    char const include_path[],
+    size_t include_path_len
+);
+
+__C_DLL__ CError cbuild_target_add_include_path_flag (
     CBuild* self,
     CTarget* target,
     char const include_path[],
@@ -105,14 +132,14 @@ __C_DLL__ CError cbuild_target_add_link_flag (
 
 __C_DLL__ CError cbuild_target_get (
     CBuild* self,
-    char const* target_name,
+    char const target_name[],
     size_t target_name_len,
     CTarget* out_target
 );
 
 __C_DLL__ CError cbuild_depends_on (
     CBuild* self,
-    char const* other_cbuild_path,
+    char const other_cbuild_path[],
     size_t other_cbuild_path_len,
     CBuild* out_other_cbuild
 );

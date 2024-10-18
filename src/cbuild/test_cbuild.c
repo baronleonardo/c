@@ -23,7 +23,7 @@ UTEST_F_TEARDOWN (CBuild)
 UTEST_F (CBuild, general)
 {
   CTarget target;
-  CError err = cbuild_exe_create (utest_fixture, STR ("t"), &target);
+  CError err = cbuild_exe_create (utest_fixture, STR ("t"), STR ("."), &target);
   ASSERT_EQ_MSG (err.code, 0, err.msg);
 
   err = cbuild_target_add_source (
@@ -32,7 +32,8 @@ UTEST_F (CBuild, general)
   ASSERT_EQ_MSG (err.code, 0, err.msg);
 
   CTarget target2;
-  err = cbuild_shared_lib_create (utest_fixture, STR ("t2"), &target2);
+  err =
+      cbuild_shared_lib_create (utest_fixture, STR ("t2"), STR ("."), &target2);
   ASSERT_EQ_MSG (err.code, 0, err.msg);
 
   err = cbuild_target_add_source (
@@ -41,7 +42,8 @@ UTEST_F (CBuild, general)
   ASSERT_EQ_MSG (err.code, 0, err.msg);
 
   CTarget target3;
-  err = cbuild_static_lib_create (utest_fixture, STR ("t3"), &target3);
+  err =
+      cbuild_static_lib_create (utest_fixture, STR ("t3"), STR ("."), &target3);
   ASSERT_EQ_MSG (err.code, 0, err.msg);
 
   err = cbuild_target_add_source (

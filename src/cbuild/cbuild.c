@@ -51,7 +51,7 @@ static char const lib_prefix[] = "lib";
   assert (str_err.code == 0);
 
 static CError internal_cbuild_get_path (
-    CTargetImpl* target, char const* build_install_dir_name, CStr* out_path
+    CTargetImpl* target, char const build_install_dir_name[], CStr* out_path
 );
 static c_fs_error_t internal_find_and_push_all_compiled_objects_handler (
     char path[], size_t path_len, void* extra_data
@@ -75,7 +75,7 @@ cbuild_create (
 
   if (!out_cbuild)
     {
-      return CERROR_out_is_null;
+      return CERROR_none;
     }
 
   CBuildImpl* impl = calloc (1, sizeof (CBuildImpl));
@@ -168,51 +168,89 @@ cbuild_create (
 
 CError
 cbuild_object_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 )
 {
   return cbuild_target_create (
-      self, name, name_len, out_target, STR (""), CTARGET_TYPE_object
+      self,
+      name,
+      name_len,
+      base_path,
+      base_path_len,
+      STR (""),
+      CTARGET_TYPE_object,
+      out_target
   );
 }
 
 CError
 cbuild_static_lib_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 )
 {
   return cbuild_target_create (
       self,
       name,
       name_len,
-      out_target,
+      base_path,
+      base_path_len,
       STR2 (default_builder->flags.static_library),
-      CTARGET_TYPE_static
+      CTARGET_TYPE_static,
+      out_target
   );
 }
 
 CError
 cbuild_shared_lib_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 )
 {
   return cbuild_target_create (
       self,
       name,
       name_len,
-      out_target,
+      base_path,
+      base_path_len,
       STR2 (default_builder->flags.shared_library),
-      CTARGET_TYPE_shared
+      CTARGET_TYPE_shared,
+      out_target
   );
 }
 
 CError
 cbuild_exe_create (
-    CBuild* self, char const* name, size_t name_len, CTarget* out_target
+    CBuild* self,
+    char const name[],
+    size_t name_len,
+    char const base_path[],
+    size_t base_path_len,
+    CTarget* out_target
 )
 {
   return cbuild_target_create (
-      self, name, name_len, out_target, STR (""), CTARGET_TYPE_executable
+      self,
+      name,
+      name_len,
+      base_path,
+      base_path_len,
+      STR (""),
+      CTARGET_TYPE_executable,
+      out_target
   );
 }
 
@@ -274,7 +312,36 @@ cbuild_target_add_source (
 }
 
 CError
-cbuild_target_add_include_dir (
+cbuild_target_set_include_path (
+    CBuild* self,
+    CTarget* target,
+    char const include_path[],
+    size_t include_path_len
+)
+{
+  assert (self && self->impl);
+  assert (target && target->impl);
+  assert (include_path && include_path_len > 0);
+
+  if (include_path[include_path_len] != '\0')
+    {
+      return CERROR_invalid_string;
+    }
+
+  c_str_error_t str_err = c_str_replace_at (
+      &target->impl->base_dir,
+      0,
+      target->impl->base_dir.len,
+      include_path,
+      include_path_len
+  );
+  assert (str_err.code == 0);
+
+  return CERROR_none;
+}
+
+CError
+cbuild_target_add_include_path_flag (
     CBuild* self,
     CTarget* target,
     char const include_path[],
@@ -312,7 +379,7 @@ cbuild_target_depends_on (
   assert (depend_on && depend_on->impl);
 
   c_str_error_t str_err = C_STR_ERROR_none;
-  c_fs_error_t fs_err = C_FS_ERROR_NONE;
+  c_fs_error_t fs_err = C_FS_ERROR_none;
 
   if ((property & CTARGET_PROPERTY_objects) == CTARGET_PROPERTY_objects)
     {
@@ -325,8 +392,7 @@ cbuild_target_depends_on (
               target->impl->base_dir.data, depend_on->impl->base_dir.data
           ) != 0)
         {
-          char separator;
-          c_fs_path_get_separator (&separator);
+          char separator = c_fs_path_get_separator ();
 
           str_err = c_str_format (
               &build_path,
@@ -355,38 +421,38 @@ cbuild_target_depends_on (
 
       c_str_destroy (&build_path);
     }
+
   if (((property & CTARGET_PROPERTY_library) == CTARGET_PROPERTY_library) ||
       ((property & CTARGET_PROPERTY_library_with_rpath) ==
        CTARGET_PROPERTY_library_with_rpath))
     {
-      CStr install_path;
+      CStr install_path = { 0 };
 
       str_err = c_str_create_empty (c_fs_path_get_max_len (), &install_path);
       assert (str_err.code == 0);
 
-      if (strcmp (
-              target->impl->base_dir.data, depend_on->impl->base_dir.data
-          ) != 0)
-        {
-          char separator;
-          c_fs_path_get_separator (&separator);
+      // if (strcmp (
+      //         target->impl->base_dir.data, depend_on->impl->base_dir.data
+      //     ) != 0)
+      //   {
+      char separator = c_fs_path_get_separator ();
 
-          str_err = c_str_format (
-              &install_path,
-              0,
-              STR_INV ("%s%c%s"),
-              depend_on->impl->base_dir.data,
-              separator,
-              depend_on->impl->install_path.data
-          );
-          assert (str_err.code == 0);
-        }
-      else
-        {
-          str_err =
-              c_str_append (&install_path, &depend_on->impl->install_path);
-          assert (str_err.code == 0);
-        }
+      str_err = c_str_format (
+          &install_path,
+          0,
+          STR_INV ("%s%c%s"),
+          depend_on->impl->base_dir.data,
+          separator,
+          depend_on->impl->install_path.data
+      );
+      assert (str_err.code == 0);
+      // }
+      // else
+      //   {
+      //     str_err =
+      //         c_str_append (&install_path, &depend_on->impl->install_path);
+      //     assert (str_err.code == 0);
+      //   }
 
       // -L<library path>
       str_err = c_str_format (
@@ -430,6 +496,7 @@ cbuild_target_depends_on (
 
       c_str_destroy (&install_path);
     }
+
   if ((property & CTARGET_PROPERTY_cflags) == CTARGET_PROPERTY_cflags)
     {
       str_err = c_str_format (
@@ -440,6 +507,7 @@ cbuild_target_depends_on (
       );
       assert (str_err.code == 0);
     }
+
   if ((property & CTARGET_PROPERTY_lflags) == CTARGET_PROPERTY_lflags)
     {
       str_err = c_str_format (
@@ -450,10 +518,11 @@ cbuild_target_depends_on (
       );
       assert (str_err.code == 0);
     }
+
   if ((property & CTARGET_PROPERTY_include_path) ==
       CTARGET_PROPERTY_include_path)
     {
-      CError err = cbuild_target_add_include_dir (
+      CError err = cbuild_target_add_include_path_flag (
           self,
           target,
           depend_on->impl->base_dir.data,
@@ -510,7 +579,7 @@ cbuild_target_add_link_flag (
 CError
 cbuild_target_get (
     CBuild* self,
-    char const* target_name,
+    char const target_name[],
     size_t target_name_len,
     CTarget* out_target
 )
@@ -520,7 +589,7 @@ cbuild_target_get (
 
   if (!out_target)
     {
-      return CERROR_out_is_null;
+      return CERROR_none;
     }
 
   /// FIXME: need better algorithm
@@ -541,7 +610,7 @@ cbuild_target_get (
 CError
 cbuild_depends_on (
     CBuild* self,
-    char const* other_cbuild_path,
+    char const other_cbuild_path[],
     size_t other_cbuild_path_len,
     CBuild* out_other_cbuild
 )
@@ -551,7 +620,7 @@ cbuild_depends_on (
 
   if (!out_other_cbuild)
     {
-      return CERROR_out_is_null;
+      return CERROR_none;
     }
 
   CError err = cbuild_create (
@@ -593,6 +662,7 @@ cbuild_target_destroy (CBuild* self, CTarget* target)
     }
 
   c_str_destroy (&target->impl->name);
+  c_str_destroy (&target->impl->cbuild_base_dir);
   c_str_destroy (&target->impl->base_dir);
   c_str_destroy (&target->impl->build_path);
   c_str_destroy (&target->impl->install_path);
@@ -831,86 +901,116 @@ cbuild_destroy (CBuild* self)
 CError
 cbuild_target_create (
     CBuild* self,
-    char const* name,
+    char const name[],
     size_t name_len,
-    CTarget* out_target,
+    char const base_path[],
+    size_t base_path_len,
     char const lflags[],
     size_t lflags_len,
-    CTargetType ttype
+    CTargetType ttype,
+    CTarget* out_target
 )
 {
   assert (self && self->impl);
 
-  if (out_target)
+  if (!out_target)
     {
-      *out_target = (CTarget){ 0 };
-      out_target->impl = calloc (1, sizeof (CTargetImpl));
-      if (!out_target->impl)
-        {
-          return CERROR_memory_allocation;
-        }
-
-      // ttype
-      out_target->impl->ttype = ttype;
-
-      // target name
-      c_str_error_t str_err =
-          c_str_create (name, name_len, &out_target->impl->name);
-      assert (str_err.code == 0);
-
-      // base dir
-      str_err =
-          c_str_clone (&self->impl->base_path, &out_target->impl->base_dir);
-      assert (str_err.code == 0);
-
-      // build path
-      CError err = internal_cbuild_get_path (
-          out_target->impl, default_builder_path, &out_target->impl->build_path
-      );
-      if (err.code != C_FS_ERROR_NONE.code)
-        {
-          return err;
-        }
-
-      // install path
-      err = internal_cbuild_get_path (
-          out_target->impl,
-          default_install_path,
-          &out_target->impl->install_path
-      );
-      if (err.code != C_FS_ERROR_NONE.code)
-        {
-          return err;
-        }
-
-      // cflags
-      str_err = c_str_clone (&self->impl->cflags, &out_target->impl->cflags);
-      assert (str_err.code == 0);
-      // lflags
-      str_err = c_str_create (lflags, lflags_len, &out_target->impl->lflags);
-      assert (str_err.code == 0);
-      // link_with
-      str_err = c_str_create (STR (""), &out_target->impl->link_with);
-      assert (str_err.code == 0);
-
-      // sources
-      c_array_error_t arr_err =
-          c_array_create (sizeof (CStr), &out_target->impl->sources);
-      assert (arr_err.code == 0);
-
-      // dependencies
-      arr_err = c_array_create (
-          sizeof (CTargetImpl*), &out_target->impl->dependencies
-      );
-      assert (arr_err.code == 0);
-
-      arr_err = c_array_push (&self->impl->targets, &out_target->impl);
-      assert (arr_err.code == 0);
-
       return CERROR_none;
     }
 
-  return CERROR_out_is_null;
+  *out_target = (CTarget){ 0 };
+  out_target->impl = calloc (1, sizeof (CTargetImpl));
+  if (!out_target->impl)
+    {
+      return CERROR_memory_allocation;
+    }
+
+  // ttype
+  out_target->impl->ttype = ttype;
+
+  // target name
+  c_str_error_t str_err =
+      c_str_create (name, name_len, &out_target->impl->name);
+  assert (str_err.code == 0);
+
+  // cbuild base dir
+  str_err =
+      c_str_clone (&self->impl->base_path, &out_target->impl->cbuild_base_dir);
+  assert (str_err.code == 0);
+
+  // base dir
+  str_err = c_str_set_capacity (
+      &out_target->impl->base_dir, c_fs_path_get_max_len ()
+  );
+  assert (str_err.code == 0);
+  bool is_absolute = false;
+  c_fs_error_t fs_err =
+      c_fs_path_is_absolute (base_path, base_path_len, &is_absolute);
+  if (!is_absolute)
+    {
+      fs_err = c_fs_path_to_absolute (
+          base_path,
+          base_path_len,
+          out_target->impl->base_dir.data,
+          out_target->impl->base_dir.capacity,
+          &out_target->impl->base_dir.len
+      );
+      assert (fs_err.code == 0);
+    }
+  else
+    {
+      str_err = c_str_replace_at (
+          &out_target->impl->base_dir,
+          0,
+          out_target->impl->base_dir.len,
+          base_path,
+          base_path_len
+      );
+      assert (str_err.code == 0);
+    }
+
+  // build path
+  CError err = internal_cbuild_get_path (
+      out_target->impl, default_builder_path, &out_target->impl->build_path
+  );
+  if (err.code != C_FS_ERROR_none.code)
+    {
+      return err;
+    }
+
+  // install path
+  err = internal_cbuild_get_path (
+      out_target->impl, default_install_path, &out_target->impl->install_path
+  );
+  if (err.code != C_FS_ERROR_none.code)
+    {
+      return err;
+    }
+
+  // cflags
+  str_err = c_str_clone (&self->impl->cflags, &out_target->impl->cflags);
+  assert (str_err.code == 0);
+  // lflags
+  str_err = c_str_create (lflags, lflags_len, &out_target->impl->lflags);
+  assert (str_err.code == 0);
+  // link_with
+  str_err = c_str_create (STR (""), &out_target->impl->link_with);
+  assert (str_err.code == 0);
+
+  // sources
+  c_array_error_t arr_err =
+      c_array_create (sizeof (CStr), &out_target->impl->sources);
+  assert (arr_err.code == 0);
+
+  // dependencies
+  arr_err =
+      c_array_create (sizeof (CTargetImpl*), &out_target->impl->dependencies);
+  assert (arr_err.code == 0);
+
+  arr_err = c_array_push (&self->impl->targets, &out_target->impl);
+  assert (arr_err.code == 0);
+
+  return CERROR_none;
 }
 
 CError
@@ -982,8 +1082,7 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
       c_array_push (&cmd, &(char const*){ default_builder->cflags.compile });
   assert (arr_err.code == 0);
 
-  char separator;
-  c_fs_path_get_separator (&separator);
+  char separator = c_fs_path_get_separator ();
 
 #ifndef _WIN32
   // $ <compiler> <cflags> -c -o<c_out>/<target name>/<target name>.o
@@ -1151,12 +1250,7 @@ cbuild_target_link (CBuild* self, CTargetImpl* target)
   str_err = c_str_create (STR (""), &output);
   assert (str_err.code == 0);
 
-  char path_separator;
-  c_fs_path_get_separator (&path_separator);
-
-  char buf[1024];
-  c_fs_dir_get_current (buf, 1024, NULL);
-  puts (buf);
+  char path_separator = c_fs_path_get_separator ();
 
   // -o<install_path>/lib<name>.so
   // -o<install path>/<name>
@@ -1274,7 +1368,7 @@ internal_find_and_push_all_compiled_objects_cstr_handler (
 
 CError
 internal_cbuild_get_path (
-    CTargetImpl* target, char const* build_install_dir_name, CStr* out_path
+    CTargetImpl* target, char const build_install_dir_name[], CStr* out_path
 )
 {
   *out_path = (CStr){ 0 };
@@ -1284,8 +1378,7 @@ internal_cbuild_get_path (
       c_str_create_empty (c_fs_path_get_max_len (), out_path);
   assert (str_err.code == 0);
 
-  char separator;
-  c_fs_path_get_separator (&separator);
+  char separator = c_fs_path_get_separator ();
 
   // <build_install_dir_name>/<target name>
   str_err = c_str_format (
@@ -1429,7 +1522,7 @@ internal_compile_install_build_c (
   /// create a shared library for build.c
   CTarget build_target;
   err = cbuild_shared_lib_create (
-      self, STR (default_build_c_target_name), &build_target
+      self, STR (default_build_c_target_name), STR ("."), &build_target
   );
   assert (err.code == 0);
 
@@ -1459,8 +1552,7 @@ internal_compile_install_build_c (
   // cflags
   CStr cflags;
   str_err = c_str_create_empty (c_fs_path_get_max_len (), &cflags);
-  char path_separator;
-  c_fs_path_get_separator (&path_separator);
+  char path_separator = c_fs_path_get_separator ();
 
   // /I<include folder>
   str_err = c_str_format (
@@ -1474,7 +1566,7 @@ internal_compile_install_build_c (
       "include"
   );
   assert (str_err.code == 0);
-  err = cbuild_target_add_include_dir (
+  err = cbuild_target_add_include_path_flag (
       self, &build_target, cflags.data, cflags.len
   );
   assert (err.code == 0);

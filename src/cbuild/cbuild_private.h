@@ -7,6 +7,7 @@ struct CTargetImpl
 {
   CTargetType ttype;
   CStr name;
+  CStr cbuild_base_dir;
   CStr base_dir;
   CStr build_path;
   CStr install_path;
@@ -47,12 +48,14 @@ __C_DLL__ CError cbuild_build (CBuild* self);
 
 __C_DLL__ CError cbuild_target_create (
     CBuild* self,
-    char const* name,
+    char const name[],
     size_t name_len,
-    CTarget* out_target,
+    char const base_path[],
+    size_t base_path_len,
     char const lflags[],
     size_t lflags_len,
-    CTargetType ttype
+    CTargetType ttype,
+    CTarget* out_target
 );
 
 __C_DLL__ CError cbuild_target_build (CBuild* self, CTargetImpl* target);

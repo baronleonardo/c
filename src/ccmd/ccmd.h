@@ -3,6 +3,8 @@
 
 #include "cerror.h"
 
+#include <stddef.h>
+
 typedef enum CSubCmd
 {
   CSUB_CMD_init,
@@ -17,7 +19,9 @@ typedef enum CSubCmd
 
 typedef struct CCmd
 {
-  CSubCmd* subcmd;
+  CSubCmd subcmd;
+  size_t argc;
+  char** argv;
 } CCmd;
 
 CError ccmd_create (int argc, char* argv[], CCmd* out_ccmd);

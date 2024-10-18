@@ -13,19 +13,40 @@
 
 #define STR(s) (s), sizeof (s) - 1
 #define STR_INV(s) sizeof (s) - 1, (s)
+#define IS_HELP(s) ((strcmp ((s), "--help")) || (strcmp ((s), "-h") == 0))
+#define ON_EXTRA_PARAM_ERR "error: unexpected extra parameter"
 #define ON_ERR(err)                                                            \
-  ((err.code != 0)                                                             \
-       ? (fprintf (stderr, "%d: %s\n", err.code, err.msg), abort ())           \
-       : (void) 0)
+  if (err.code != 0)                                                           \
+    {                                                                          \
+      fprintf (stderr, "%d: %s\n", err.code, err.msg);                         \
+      goto Error;                                                              \
+    }
 
-static CError internal_ccmd_on_init (CCmd* self);
-static CError internal_ccmd_on_build (CCmd* self);
-static CError internal_ccmd_on_run (CCmd* self);
-static CError internal_ccmd_on_test (CCmd* self);
-static CError internal_ccmd_on_doc (CCmd* self);
-static CError internal_ccmd_on_fmt (CCmd* self);
-static CError internal_ccmd_on_help (CCmd* self);
-static CError internal_ccmd_on_version (CCmd* self);
+// clang-format off
+static char const* subcmd_helps[] = {
+  [CSUB_CMD_init] = "Usage: c init\n\n"
+    "  Initializes a sample C project in the current working\n"
+    "  directory.\n\n"
+    "Options:\n"
+    "-h, --help             Print this help and exit\n",
+  [CSUB_CMD_build] = "",
+  [CSUB_CMD_run] = "",
+  [CSUB_CMD_test] = "",
+  [CSUB_CMD_doc] = "",
+  [CSUB_CMD_fmt] = "",
+  [CSUB_CMD_help] = "",
+  [CSUB_CMD_version] = "",
+};
+// clang-format on
+
+static int internal_ccmd_on_init (CCmd* self);
+static int internal_ccmd_on_build (CCmd* self);
+static int internal_ccmd_on_run (CCmd* self);
+static int internal_ccmd_on_test (CCmd* self);
+static int internal_ccmd_on_doc (CCmd* self);
+static int internal_ccmd_on_fmt (CCmd* self);
+static int internal_ccmd_on_help (CCmd* self);
+static int internal_ccmd_on_version (CCmd* self);
 
 CError
 ccmd_create (int argc, char* argv[], CCmd* out_ccmd)
@@ -33,13 +54,19 @@ ccmd_create (int argc, char* argv[], CCmd* out_ccmd)
   if (argc <= 1)
     {
       internal_ccmd_on_help (NULL);
-      exit (EXIT_FAILURE);
+      return CERROR_wrong_options;
+    }
+
+  if (!out_ccmd)
+    {
+      internal_ccmd_on_help (NULL);
+      return CERROR_none;
     }
 
   struct
   {
     char const* const subcmd;
-    CError (*handler) (CCmd* self);
+    int (*handler) (CCmd* self);
   } const subcmds[] = {
     { "init", internal_ccmd_on_init }, { "build", internal_ccmd_on_build },
     { "run", internal_ccmd_on_run },   { "test", internal_ccmd_on_test },
@@ -48,56 +75,66 @@ ccmd_create (int argc, char* argv[], CCmd* out_ccmd)
   };
   size_t const subcmds_len = sizeof (subcmds) / sizeof (subcmds[0]);
 
-  if (out_ccmd)
-    {
-      *out_ccmd = (CCmd){ 0 };
+  *out_ccmd = (CCmd){ 0 };
+  out_ccmd->argc = argc - 2;
+  out_ccmd->argv = argv + 2;
 
-      for (size_t iii = 0; iii < subcmds_len; ++iii)
+  for (size_t iii = 0; iii < subcmds_len; ++iii)
+    {
+      if (strncmp (
+              argv[1], subcmds[iii].subcmd, sizeof (subcmds[iii].subcmd) - 1
+          ) == 0)
         {
-          if (strncmp (
-                  argv[1], subcmds[iii].subcmd, sizeof (subcmds[iii].subcmd) - 1
-              ) == 0)
+          out_ccmd->subcmd = (CSubCmd) iii;
+          if (subcmds[iii].handler (out_ccmd) != EXIT_SUCCESS)
             {
-              subcmds[iii].handler (out_ccmd);
-              exit (EXIT_SUCCESS);
+              return CERROR_failed_command;
             }
+          break;
         }
     }
 
-  internal_ccmd_on_help (NULL);
-  exit (EXIT_FAILURE);
+  return CERROR_none;
 }
 
 void
 ccmd_destroy (CCmd* self)
 {
+  assert (self && self->argv);
+
+  *self = (CCmd){ 0 };
 }
 
-CError
+int
 internal_ccmd_on_init (CCmd* self)
 {
-  /// TODO: we will have an option for custom path
-  CStr project_path;
-  c_str_error_t str_err =
-      c_str_create_empty (c_fs_path_get_max_len (), &project_path);
-  ON_ERR (str_err);
-  c_fs_error_t fs_err = c_fs_dir_get_current (
-      project_path.data, project_path.capacity, &project_path.len
-  );
-  ON_ERR (fs_err);
+  CStr project_path = { 0 };
+  int exit_status = EXIT_SUCCESS;
+  c_str_error_t str_err = C_STR_ERROR_none;
+  c_fs_error_t fs_err = C_FS_ERROR_none;
 
-  /// FIXME: we will have an option for project name
-  // create empty <project folder>
-  fs_err = c_fs_path_append (
-      project_path.data,
-      project_path.len,
-      project_path.capacity,
-      STR ("example"),
-      &project_path.len
-  );
-  ON_ERR (fs_err);
-  fs_err = c_fs_dir_create (project_path.data, project_path.len);
-  ON_ERR (fs_err);
+  if (self->argc >= 1)
+    {
+      if (IS_HELP (self->argv[0]))
+        {
+          puts (subcmd_helps[self->subcmd]);
+          return EXIT_SUCCESS;
+        }
+      else
+        {
+          printf ("%s%s\n", ON_EXTRA_PARAM_ERR, self->argv[0]);
+          return EXIT_FAILURE;
+        }
+    }
+  else
+    {
+      str_err = c_str_create_empty (c_fs_path_get_max_len (), &project_path);
+      ON_ERR (str_err);
+      fs_err = c_fs_dir_get_current (
+          project_path.data, project_path.capacity, &project_path.len
+      );
+      ON_ERR (fs_err);
+    }
 
   /// <project folder>/build.c
   size_t const orig_len = project_path.len;
@@ -110,12 +147,13 @@ internal_ccmd_on_init (CCmd* self)
   );
   ON_ERR (fs_err);
 
-  CFile file;
-  fs_err = c_fs_file_open (project_path.data, project_path.len, "w", &file);
+  CFile build_c_file = { 0 };
+  fs_err =
+      c_fs_file_open (project_path.data, project_path.len, "w", &build_c_file);
   ON_ERR (fs_err);
 
   fs_err = c_fs_file_write (
-      &file,
+      &build_c_file,
       // clang-format off
       STR ("#include \"cbuild.h\"\n\n"
            "CError build (CBuild* self)\n"
@@ -138,9 +176,6 @@ internal_ccmd_on_init (CCmd* self)
       // clang-format on
       NULL
   );
-  ON_ERR (fs_err);
-
-  fs_err = c_fs_file_close (&file);
   ON_ERR (fs_err);
 
   /// <project folder>
@@ -180,11 +215,13 @@ internal_ccmd_on_init (CCmd* self)
   );
   ON_ERR (fs_err);
 
-  fs_err = c_fs_file_open (project_path.data, project_path.len, "w", &file);
+  CFile main_c_file = { 0 };
+  fs_err =
+      c_fs_file_open (project_path.data, project_path.len, "w", &main_c_file);
   ON_ERR (fs_err);
 
   fs_err = c_fs_file_write (
-      &file,
+      &main_c_file,
       STR ("#include <stdio.h>\n\n"
            "int main() {\n"
            "  puts(\"Hello World\");\n"
@@ -193,17 +230,18 @@ internal_ccmd_on_init (CCmd* self)
   );
   ON_ERR (fs_err);
 
-  fs_err = c_fs_file_close (&file);
-  ON_ERR (fs_err);
-
+Error:
+  c_fs_file_close (&build_c_file);
+  c_fs_file_close (&main_c_file);
   c_str_destroy (&project_path);
-
-  return CERROR_none;
+  return exit_status;
 }
 
-CError
+int
 internal_ccmd_on_build (CCmd* self)
 {
+  int exit_status = EXIT_SUCCESS;
+
   /// FIXME: "." should be taken as a parameter
   char project_path[] = ".";
 
@@ -217,37 +255,36 @@ internal_ccmd_on_build (CCmd* self)
   err = cbuild_build (&cbuild);
   ON_ERR (err);
 
+Error:
   cbuild_destroy (&cbuild);
-
-  return err;
+  return exit_status;
 }
 
-CError
+int
 internal_ccmd_on_run (CCmd* self)
 {
-  return CERROR_none;
+  return EXIT_SUCCESS;
 }
 
-CError
+int
 internal_ccmd_on_test (CCmd* self)
 {
-  return CERROR_none;
+  return EXIT_SUCCESS;
 }
 
-CError
+int
 internal_ccmd_on_doc (CCmd* self)
 {
-  return CERROR_none;
+  return EXIT_SUCCESS;
 }
 
-CError
+int
 internal_ccmd_on_fmt (CCmd* self)
 {
-  return CERROR_none;
-  // clang-format
+  return EXIT_SUCCESS;
 }
 
-CError
+int
 internal_ccmd_on_help (CCmd* self)
 {
   (void) self;
@@ -263,15 +300,15 @@ internal_ccmd_on_help (CCmd* self)
           "  help\t\tPrint this message\n"
           "  version\tPrint c version\n");
 
-  return CERROR_none;
+  return EXIT_SUCCESS;
 }
 
-CError
+int
 internal_ccmd_on_version (CCmd* self)
 {
   (void) self;
 
   printf ("Version %s\n", C_VER);
 
-  return CERROR_none;
+  return EXIT_SUCCESS;
 }
