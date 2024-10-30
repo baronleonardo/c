@@ -3,7 +3,7 @@
 #include "calc.h"
 
 int
-main ()
+main()
 {
-  printf ("%d\n", add (1, 2));
+  printf("%d\n", add(1, 2));
 }

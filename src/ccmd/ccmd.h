@@ -24,8 +24,10 @@ typedef struct CCmd
   char** argv;
 } CCmd;
 
-CError ccmd_create (int argc, char* argv[], CCmd* out_ccmd);
+CError
+ccmd_create(int argc, char* argv[], CCmd* out_ccmd);
 
-void ccmd_destroy (CCmd* self);
+void
+ccmd_destroy(CCmd* self);
 
 #endif // CCMD_H

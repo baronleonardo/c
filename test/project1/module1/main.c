@@ -1,8 +1,9 @@
 #include <stdio.h>
 
-int main()
+int
+main()
 {
-    puts("Hello, World!");
+  puts("Hello, World!");
 
-    return 0;
+  return 0;
 }
