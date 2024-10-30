@@ -70,6 +70,19 @@ add_library(dl_loader ${dl_loader_path}/dl_loader.h ${dl_loader_path}/dl_loader.
 target_include_directories(dl_loader PUBLIC ${dl_loader_path})
 add_library(c::dl_loader ALIAS dl_loader)
 
+# defer
+set(defer_path ${CMAKE_BINARY_DIR}/_deps/defer)
+if(NOT EXISTS ${defer_path}/defer.h)
+    file(DOWNLOAD https://raw.githubusercontent.com/baronleonardo/cstdlib/main/defer.h ${defer_path}/defer.h)
+    file(WRITE ${defer_path}/defer.c 
+        "#define CSTDLIB_DERFER_IMPLEMENTATION\n"
+        "#include \"defer.h\"\n"
+    )
+endif()
+add_library(defer ${defer_path}/defer.h ${defer_path}/defer.c)
+target_include_directories(defer PUBLIC ${defer_path})
+add_library(c::defer ALIAS defer)
+
 
 # utest
 set(utest_path ${CMAKE_BINARY_DIR}/_deps/utest)

@@ -12,6 +12,7 @@ set(private_libs
     c::fs
     c::dl_loader
     jemalloc
+    c::defer
 )
 
 c_create_targets(${PROJECT_NAME}

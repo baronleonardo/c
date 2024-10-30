@@ -1,4 +1,5 @@
 #include "cprocess.h"
+#include "helpers.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -7,19 +8,33 @@
 #include <Windows.h>
 #endif
 
-#include "subprocess.h"
+#include <subprocess.h>
 
-int
-cprocess_exec (char const* const command_line[], size_t commands_count)
+#include "defer.h"
+
+CError
+cprocess_exec (
+    char const* const command_line[],
+    size_t commands_count,
+    bool verbose,
+    int* out_status,
+    CStr* out_stdout_stderr
+)
 {
   struct subprocess_s out_process = { 0 };
+  CError err = CERROR_none;
 
-  printf ("command:");
-  for (size_t iii = 0; iii < commands_count && command_line[iii]; ++iii)
+  c_defer_init (3);
+
+  if (verbose)
     {
-      printf (" %s", command_line[iii]);
+      printf ("command:");
+      for (size_t iii = 0; iii < commands_count && command_line[iii]; ++iii)
+        {
+          printf (" %s", command_line[iii]);
+        }
+      puts ("");
     }
-  puts ("");
 
 #ifdef _WIN32
   SetLastError (0);
@@ -32,12 +47,21 @@ cprocess_exec (char const* const command_line[], size_t commands_count)
           subprocess_option_combined_stdout_stderr,
       &out_process
   );
+  c_defer_err (true, NULL, NULL, subprocess_destroy (&out_process));
+  if (out_status)
+    {
+      *out_status = status;
+    }
 
-  subprocess_join (&out_process, &status);
+  int join_status = subprocess_join (&out_process, &status);
+  c_defer_check (join_status == 0, NULL, NULL, NULL);
 
-  // on error
-  printf ("Status: %d\n", status);
-  if (status)
+  if (verbose)
+    {
+      printf ("Status: %d\n", status);
+    }
+
+  if (status != 0)
     {
 #ifdef _WIN32
       DWORD process_error = GetLastError ();
@@ -45,33 +69,60 @@ cprocess_exec (char const* const command_line[], size_t commands_count)
         {
           if (process_error == ERROR_FILE_NOT_FOUND)
             {
-              fprintf (
-                  stderr,
-                  "Error(subprocess): '%s': No such file or directory\n",
-                  command_line[0]
-              );
+              if (out_stdout_stderr)
+                {
+                  c_str_error_t str_err = c_str_format (
+                      out_stdout_stderr,
+                      0,
+                      C_STR_INV (
+                          "Error(subprocess): '%s': No such file or directory"
+                      ),
+                      command_line[0]
+                  );
+                  c_defer_err (
+                      str_err.code == 0,
+                      NULL,
+                      NULL,
+                      err = CERROR_internal_error (str_err.desc)
+                  );
+                }
             }
           else
             {
-              fprintf (
-                  stderr,
-                  "Error(subprocess): code: %lu, io error\n",
-                  process_error
-              );
+              if (out_stdout_stderr)
+                {
+                  c_str_error_t str_err = c_str_format (
+                      out_stdout_stderr,
+                      0,
+                      C_STR_INV ("Error(subprocess): code: %lu, io error"),
+                      process_error
+                  );
+                  c_defer_err (
+                      str_err.code == 0,
+                      NULL,
+                      NULL,
+                      err = CERROR_internal_error (str_err.desc)
+                  );
+                }
             }
-          goto End;
+
+          c_defer_check (false, NULL, NULL, err = CERROR_failed_command);
         }
 #endif
-      char buf[BUFSIZ] = { 0 };
-      while (subprocess_read_stdout (&out_process, buf, BUFSIZ))
-        {
-          printf ("%s", buf);
-        }
-      puts ("");
     }
-#ifdef _WIN32
-End:
-#endif
-  subprocess_destroy (&out_process);
-  return status;
+
+  if (out_stdout_stderr)
+    {
+      out_stdout_stderr->len = subprocess_read_stdout (
+          &out_process, out_stdout_stderr->data, out_stdout_stderr->capacity
+      );
+      if (verbose && out_stdout_stderr->len > 0)
+        {
+          puts (out_stdout_stderr->data);
+        }
+    }
+
+  c_defer_deinit ();
+
+  return err;
 }

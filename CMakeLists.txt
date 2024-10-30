@@ -53,6 +53,7 @@ project(c
     VERSION 0.1
     DESCRIPTION "this is a project/document/unittest management"
 )
+add_compile_definitions(C_VER="${CMAKE_PROJECT_VERSION}")
 
 add_subdirectory(src/ccmd)
 add_subdirectory(src/cprocess)

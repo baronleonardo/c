@@ -3,24 +3,22 @@
 #include "cbuild_private.h"
 #include "helpers.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <defer.h>
 #include <dl_loader.h>
 #include <fs.h>
 
-#define STR(s) (s), sizeof (s) - 1
-#define STR_INV(s) sizeof (s) - 1, (s)
 #define IS_HELP(s) ((strcmp ((s), "--help")) || (strcmp ((s), "-h") == 0))
 #define ON_EXTRA_PARAM_ERR "error: unexpected extra parameter"
 #define ON_ERR(err)                                                            \
-  if (err.code != 0)                                                           \
-    {                                                                          \
-      fprintf (stderr, "%d: %s\n", err.code, err.msg);                         \
-      goto Error;                                                              \
-    }
+  (fprintf (stderr, "Error: %d\n---\n%s\n", err.code, err.desc),               \
+   fprintf (stderr, "%s:%d %s\n", __FILE__, __LINE__, __func__),               \
+   (exit_status = EXIT_FAILURE))
 
 // clang-format off
 static char const* subcmd_helps[] = {
@@ -113,27 +111,34 @@ internal_ccmd_on_init (CCmd* self)
   c_str_error_t str_err = C_STR_ERROR_none;
   c_fs_error_t fs_err = C_FS_ERROR_none;
 
+  c_defer_init (10);
+
   if (self->argc >= 1)
     {
       if (IS_HELP (self->argv[0]))
         {
           puts (subcmd_helps[self->subcmd]);
-          return EXIT_SUCCESS;
+          c_defer_check (false, NULL, NULL, exit_status = EXIT_SUCCESS);
         }
       else
         {
           printf ("%s%s\n", ON_EXTRA_PARAM_ERR, self->argv[0]);
-          return EXIT_FAILURE;
+          c_defer_check (false, NULL, NULL, exit_status = EXIT_FAILURE);
         }
     }
   else
     {
       str_err = c_str_create_empty (c_fs_path_get_max_len (), &project_path);
-      ON_ERR (str_err);
+      c_defer_err (
+          str_err.code == 0,
+          c_str_destroy,
+          &project_path,
+          exit_status = EXIT_FAILURE
+      );
       fs_err = c_fs_dir_get_current (
           project_path.data, project_path.capacity, &project_path.len
       );
-      ON_ERR (fs_err);
+      c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
     }
 
   /// <project folder>/build.c
@@ -142,20 +147,25 @@ internal_ccmd_on_init (CCmd* self)
       project_path.data,
       project_path.len,
       project_path.capacity,
-      STR ("build.c"),
+      C_STR ("build.c"),
       &project_path.len
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
   CFile build_c_file = { 0 };
   fs_err =
       c_fs_file_open (project_path.data, project_path.len, "w", &build_c_file);
-  ON_ERR (fs_err);
+  c_defer_err (
+      fs_err.code == 0,
+      NULL,
+      NULL,
+      (c_fs_file_close (&build_c_file), ON_ERR (fs_err))
+  );
 
   fs_err = c_fs_file_write (
       &build_c_file,
       // clang-format off
-      STR ("#include \"cbuild.h\"\n\n"
+      C_STR ("#include \"cbuild.h\"\n\n"
            "CError build (CBuild* self)\n"
            "{\n"
            "  CTarget target;\n"
@@ -176,7 +186,7 @@ internal_ccmd_on_init (CCmd* self)
       // clang-format on
       NULL
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
   /// <project folder>
   project_path.len = orig_len;
@@ -186,54 +196,57 @@ internal_ccmd_on_init (CCmd* self)
       project_path.data,
       project_path.len,
       project_path.capacity,
-      STR ("src"),
+      C_STR ("src"),
       &project_path.len
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
   fs_err = c_fs_dir_create (project_path.data, project_path.len);
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
   /// <project folder>/src/module1
   fs_err = c_fs_path_append (
       project_path.data,
       project_path.len,
       project_path.capacity,
-      STR ("module1"),
+      C_STR ("module1"),
       &project_path.len
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
   fs_err = c_fs_dir_create (project_path.data, project_path.len);
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
   /// <project folder>/src/module1/example.c
   fs_err = c_fs_path_append (
       project_path.data,
       project_path.len,
       project_path.capacity,
-      STR ("example.c"),
+      C_STR ("example.c"),
       &project_path.len
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
   CFile main_c_file = { 0 };
   fs_err =
       c_fs_file_open (project_path.data, project_path.len, "w", &main_c_file);
-  ON_ERR (fs_err);
+  c_defer_err (
+      fs_err.code == 0,
+      NULL,
+      NULL,
+      (c_fs_file_close (&main_c_file), ON_ERR (fs_err))
+  );
 
   fs_err = c_fs_file_write (
       &main_c_file,
-      STR ("#include <stdio.h>\n\n"
-           "int main() {\n"
-           "  puts(\"Hello World\");\n"
-           "}\n"),
+      C_STR ("#include <stdio.h>\n\n"
+             "int main() {\n"
+             "  puts(\"Hello World\");\n"
+             "}\n"),
       NULL
   );
-  ON_ERR (fs_err);
+  c_defer_check (fs_err.code == 0, NULL, NULL, ON_ERR (fs_err));
 
-Error:
-  c_fs_file_close (&build_c_file);
-  c_fs_file_close (&main_c_file);
-  c_str_destroy (&project_path);
+  c_defer_deinit ();
+
   return exit_status;
 }
 
@@ -242,21 +255,25 @@ internal_ccmd_on_build (CCmd* self)
 {
   int exit_status = EXIT_SUCCESS;
 
+  CError err = CERROR_none;
+
+  c_defer_init (10);
+
   /// FIXME: "." should be taken as a parameter
   char project_path[] = ".";
 
+  CBuild cbuild = { 0 };
   /// FIXME: this should not be debug
-  CBuild cbuild;
-  CError err = cbuild_create (CBUILD_TYPE_debug, STR (project_path), &cbuild);
-  ON_ERR (err);
+  err = cbuild_create (CBUILD_TYPE_debug, C_STR (project_path), &cbuild);
+  c_defer_err (err.code == 0, cbuild_destroy, &cbuild, ON_ERR (err));
 
   err = cbuild_configure (&cbuild);
-  ON_ERR (err);
+  c_defer_check (err.code == 0, NULL, NULL, ON_ERR (err));
   err = cbuild_build (&cbuild);
-  ON_ERR (err);
+  c_defer_check (err.code == 0, NULL, NULL, ON_ERR (err));
 
-Error:
-  cbuild_destroy (&cbuild);
+  c_defer_deinit ();
+
   return exit_status;
 }
 
