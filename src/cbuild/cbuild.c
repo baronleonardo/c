@@ -916,8 +916,8 @@ cbuild_configure (CBuild* self)
     }
 
   // this will build and install build.c
-  CStr cbuild_dll_dir;
-  CStr build_function_name;
+  CStr cbuild_dll_dir = { 0 };
+  CStr build_function_name = { 0 };
   err = internal_compile_install_build_c (
       self, &cbuild_dll_dir, &build_function_name
   );
@@ -1340,7 +1340,6 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
   CError err = CERROR_none;
   CArray cmd = { 0 }; // CArray < char* >
   CStr cflags = { 0 };
-  CStr output = { 0 };
 #ifdef _WIN32
   CStr obj_output = { 0 };
   CStr pdb_output = { 0 };
@@ -1397,6 +1396,7 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
 
 #ifndef _WIN32
   // $ <compiler> <cflags> -c -o<c_out>/<target name>/<target name>.o
+  CStr output = { 0 };
   str_err = c_str_create_empty (1, &output);
   c_defer_err (
       str_err.code == 0,
@@ -1969,6 +1969,7 @@ internal_compile_install_build_c (
 )
 {
   CError err = CERROR_none;
+  c_str_error_t str_err = C_STR_ERROR_none;
 
   c_defer_init (6);
 
@@ -1980,7 +1981,7 @@ internal_compile_install_build_c (
   // get main function inside build.c (that one responsible of
   // building)
   CStr build_function_name;
-  c_str_error_t str_err =
+  str_err =
       c_str_create_empty (MAX_BUILD_FUNCTION_NAME_LEN, &build_function_name);
   c_defer_check (
       str_err.code == 0,
@@ -1994,7 +1995,7 @@ internal_compile_install_build_c (
   c_defer_check (err.code == 0, NULL, NULL, NULL);
 
   /// create a shared library for build.c
-  CTarget build_target;
+  CTarget build_target = { 0 };
   err = cbuild_shared_lib_create (
       self, C_STR (default_build_c_target_name), C_STR ("."), &build_target
   );
@@ -2099,13 +2100,15 @@ internal_compile_install_build_c (
   err = cbuild_target_build (self, build_target.impl);
   c_defer_check (err.code == 0, NULL, NULL, NULL);
 
-  str_err = c_str_clone (&build_target.impl->install_path, out_cbuild_dll_dir);
+  str_err =
+      c_str_clone (&(build_target.impl->install_path), out_cbuild_dll_dir);
   c_defer_check (
       str_err.code == 0, NULL, NULL, err = CERROR_internal_error (str_err.desc)
   );
   *build_fn_name = build_function_name;
 
   c_defer_deinit ();
+  cbuild_target_destroy (self, &build_target);
 
   return err;
 }

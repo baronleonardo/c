@@ -47,11 +47,11 @@ cprocess_exec (
           subprocess_option_combined_stdout_stderr,
       &out_process
   );
-  c_defer_err (true, NULL, NULL, subprocess_destroy (&out_process));
   if (out_status)
     {
       *out_status = status;
     }
+  c_defer_err (status == 0, NULL, NULL, subprocess_destroy (&out_process));
 
   int join_status = subprocess_join (&out_process, &status);
   c_defer_check (join_status == 0, NULL, NULL, NULL);
@@ -105,16 +105,19 @@ cprocess_exec (
                   );
                 }
             }
-
-          c_defer_check (false, NULL, NULL, err = CERROR_failed_command);
         }
+
+      // c_defer_check (false, NULL, NULL, err = CERROR_failed_command);
+      err = CERROR_failed_command;
 #endif
     }
 
   if (out_stdout_stderr)
     {
       out_stdout_stderr->len = subprocess_read_stdout (
-          &out_process, out_stdout_stderr->data, out_stdout_stderr->capacity - 1
+          &out_process,
+          out_stdout_stderr->data,
+          (uint32_t) out_stdout_stderr->capacity - 1U
       );
       out_stdout_stderr->data[out_stdout_stderr->len] = '\0';
 
