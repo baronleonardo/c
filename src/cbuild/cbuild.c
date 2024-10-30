@@ -1366,7 +1366,7 @@ cbuild_target_compile (CBuild* self, CTargetImpl* target)
   c_str_error_t str_err = c_str_clone (&target->cflags, &cflags);
   c_defer_err (
       str_err.code == 0,
-      c_array_destroy,
+      c_str_destroy,
       &cflags,
       err = CERROR_internal_error (str_err.desc)
   );

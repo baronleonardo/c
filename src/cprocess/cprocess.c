@@ -114,8 +114,10 @@ cprocess_exec (
   if (out_stdout_stderr)
     {
       out_stdout_stderr->len = subprocess_read_stdout (
-          &out_process, out_stdout_stderr->data, out_stdout_stderr->capacity
+          &out_process, out_stdout_stderr->data, out_stdout_stderr->capacity - 1
       );
+      out_stdout_stderr->data[out_stdout_stderr->len] = '\0';
+
       if (verbose && out_stdout_stderr->len > 0)
         {
           puts (out_stdout_stderr->data);
