@@ -1,10 +1,8 @@
 #ifndef CBUILDER_PRIVATE_H
 #define CBUILDER_PRIVATE_H
 
-typedef struct CBuilder
-{
-  struct
-  {
+typedef struct CBuilder {
+  struct {
     char const* none;
     char const* debug;
     char const* release;
@@ -14,8 +12,7 @@ typedef struct CBuilder
     char const* include_path;
   } cflags;
 
-  struct
-  {
+  struct {
     char const* none;
     char const* debug;
     char const* release;
@@ -25,15 +22,13 @@ typedef struct CBuilder
     char const* library;
   } lflags;
 
-  struct
-  {
+  struct {
     char const* output;
     char const* shared_library;
     char const* static_library;
   } flags;
 
-  struct
-  {
+  struct {
     char const* exe;
     char const* object;
     char const* lib_shared;
@@ -46,8 +41,7 @@ typedef struct CBuilder
   char const* archiver_static;
 } CBuilder;
 
-enum CBuilderType
-{
+enum CBuilderType {
   CBUILDER_TYPE_gcc,
   CBUILDER_TYPE_clang,
   CBUILDER_TYPE_msvc,

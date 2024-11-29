@@ -7,17 +7,17 @@
 #endif
 
 int
-main (int argc, char* argv[])
+main(int argc, char* argv[])
 {
 #ifdef _WIN32
-  SetErrorMode (GetErrorMode () | SEM_NOGPFAULTERRORBOX);
+  SetErrorMode(GetErrorMode() | SEM_NOGPFAULTERRORBOX);
 #endif
 
-  CCmd ccmd;
-  CError err = ccmd_create (argc, argv, &ccmd);
-  assert (err.code == 0);
+  CCmd   ccmd;
+  CError err = ccmd_create(argc, argv, &ccmd);
+  assert(err.code == 0);
 
-  ccmd_destroy (&ccmd);
+  ccmd_destroy(&ccmd);
 
   return 0;
 }

@@ -2,15 +2,13 @@
 
 #define STR(s) (s), sizeof(s) - 1
 #define ON_ERR(err)                                                            \
-  if (err.code != 0) {                                                         \
-    return err;                                                                \
-  }
+  if (err.code != 0) { return err; }
 
 CError
 project1(CBuild* cbuild)
 {
   CTarget target;
-  CError err = cbuild_exe_create(cbuild, STR("target"), STR("."), &target);
+  CError  err = cbuild_exe_create(cbuild, STR("target"), STR("."), &target);
   ON_ERR(err);
 
   err = cbuild_target_add_source(cbuild, &target, STR("module1/main.c"));
@@ -38,11 +36,11 @@ project1(CBuild* cbuild)
   ON_ERR(err);
   err = cbuild_target_add_source(cbuild, &target, STR("main.c"));
   ON_ERR(err);
-  err = cbuild_target_depends_on(
-    cbuild, &target, &calc, CTARGET_PROPERTY_library_with_rpath);
+  err = cbuild_target_depends_on(cbuild, &target, &calc,
+                                 CTARGET_PROPERTY_library_with_rpath);
   ON_ERR(err);
-  err =
-    cbuild_target_add_include_path_flag(cbuild, &target, STR("/usr/include"));
+  err = cbuild_target_add_include_path_flag(cbuild, &target,
+                                            STR("/usr/include"));
   ON_ERR(err);
 
   return CERROR_none;

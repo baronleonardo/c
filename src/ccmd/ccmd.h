@@ -5,8 +5,7 @@
 
 #include <stddef.h>
 
-typedef enum CSubCmd
-{
+typedef enum CSubCmd {
   CSUB_CMD_init,
   CSUB_CMD_build,
   CSUB_CMD_run,
@@ -17,17 +16,14 @@ typedef enum CSubCmd
   CSUB_CMD_version,
 } CSubCmd;
 
-typedef struct CCmd
-{
+typedef struct CCmd {
   CSubCmd subcmd;
-  size_t argc;
-  char** argv;
+  size_t  argc;
+  char**  argv;
 } CCmd;
 
-CError
-ccmd_create(int argc, char* argv[], CCmd* out_ccmd);
+CError ccmd_create(int argc, char* argv[], CCmd* out_ccmd);
 
-void
-ccmd_destroy(CCmd* self);
+void ccmd_destroy(CCmd* self);
 
 #endif // CCMD_H

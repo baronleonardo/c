@@ -1,34 +1,30 @@
 #ifndef CERROR_H
 #define CERROR_H
 
-typedef struct CError
-{
-  int code;
+typedef struct CError {
+  int         code;
   char const* desc;
 } CError;
 
-#define CERROR_none ((CError){ .code = 0, .desc = "" })
+#define CERROR_none ((CError){.code = 0, .desc = ""})
 #define CERROR_memory_allocation                                               \
-  ((CError){ .code = 1, .desc = "c: Memory allocation/reallocation error" })
+  ((CError){.code = 1, .desc = "c: Memory allocation/reallocation error"})
 #define CERROR_str_exccedded_len                                               \
-  ((CError){ .code = 2, .desc = "c: String excedded the length" })
+  ((CError){.code = 2, .desc = "c: String excedded the length"})
 #define CERROR_no_such_source                                                  \
-  ((CError){ .code = 3, .desc = "c: Source doesn't exists" })
+  ((CError){.code = 3, .desc = "c: Source doesn't exists"})
 #define CERROR_build_function_not_found                                        \
-  ((CError){ .code = 4,                                                        \
-             .desc = "c: build function `CError (*)(CBuild*)` not found" })
+  ((CError){.code = 4,                                                         \
+            .desc = "c: build function `CError (*)(CBuild*)` not found"})
 #define CERROR_invalid_string                                                  \
-  ((CError){ .code = 5,                                                        \
-             .desc = "c: Invalid input string, must be zero terminated" })
+  ((CError){.code = 5,                                                         \
+            .desc = "c: Invalid input string, must be zero terminated"})
 #define CERROR_invalid_target_type                                             \
-  ((CError){ .code = 6, .desc = "c: Invalid target type" })
-#define CERROR_wrong_options                                                   \
-  ((CError){ .code = 7, .desc = "c: wrong option(s)" })
-#define CERROR_failed_command                                                  \
-  ((CError){ .code = 8, .desc = "c: command failed" })
-#define CERROR_no_such_target                                                  \
-  ((CError){ .code = 9, .desc = "c: no such target" })
-#define CERROR_internal_error(m) ((CError){ .code = 10, .desc = m })
+  ((CError){.code = 6, .desc = "c: Invalid target type"})
+#define CERROR_wrong_options ((CError){.code = 7, .desc = "c: wrong option(s)"})
+#define CERROR_failed_command ((CError){.code = 8, .desc = "c: command failed"})
+#define CERROR_no_such_target ((CError){.code = 9, .desc = "c: no such target"})
+#define CERROR_internal_error(m) ((CError){.code = 10, .desc = m})
 
 /**********************************************************************/
 /************************** Error management **************************/
